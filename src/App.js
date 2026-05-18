@@ -38,11 +38,11 @@ function AppRoutes() {
   const { user, profile, loading } = useAuth()
 
   if (loading) return (
-    <div className="app-shell">
-      <div className="loading-screen">
-        <i className="ti ti-bolt spin" style={{ color: 'var(--spark)' }}></i>
-        <p>Loading flint.</p>
+    <div className="app-shell" style={{ alignItems:'center', justifyContent:'center', gap:14, background:'var(--bg)' }}>
+      <div style={{ width:56, height:56, background:'var(--spark)', borderRadius:16, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <svg viewBox="0 0 32 32" fill="none" width={32} height={32}><path d="M19 3L10 17H16L13 29L24 13H17.5L19 3Z" fill="white" opacity="0.95"/></svg>
       </div>
+      <p style={{ color:'var(--t2)', fontSize:14 }}>Loading flint.</p>
     </div>
   )
 
