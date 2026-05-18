@@ -43,7 +43,18 @@ export default function CandLocation() {
 
   async function continueOn() {
     setLoading(true)
-    const locData = { id: user.id, location_name: cityName || manualLoc, search_radius: radius, min_salary: salary, work_style: workStyle, onboarded: true, active_role: 'candidate', role: 'candidate' }
+    const locData = { 
+      id: user.id, 
+      location_name: cityName || manualLoc, 
+      search_radius: radius, 
+      min_salary: salary, 
+      work_style: workStyle, 
+      onboarded: true, 
+      active_role: 'candidate', 
+      role: 'candidate',
+      full_name: user.user_metadata?.full_name || '',
+      email: user.email,
+    }
     if (lat) { locData.lat = lat; locData.lon = lon }
     await supabase.from('profiles').upsert(locData)
     setLoading(false)
