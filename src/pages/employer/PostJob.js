@@ -3,42 +3,66 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 
+const inputStyle = { width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:9, padding:'10px 12px', color:'#fff', fontSize:12, fontFamily:'inherit', outline:'none' }
+const selectStyle = { ...inputStyle, cursor:'pointer' }
+const labelStyle = { fontSize:10, color:'var(--t3)', letterSpacing:'.5px', marginBottom:4 }
+
 export default function PostJob() {
   const nav = useNavigate()
   const { user } = useAuth()
-  const [form, setForm] = useState({ title:'', salary_min:'', salary_max:'', job_type:'Full-time', work_style:'Hybrid', location:'', availability:'Within 1 month', contract:'Permanent', seniority_level:'Senior', description:'', skills_required:'', perks:'' })
+  const [title, setTitle] = useState('')
+  const [salaryMin, setSalaryMin] = useState('')
+  const [salaryMax, setSalaryMax] = useState('')
+  const [jobType, setJobType] = useState('Full-time')
+  const [workStyle, setWorkStyle] = useState('Hybrid')
+  const [location, setLocation] = useState('')
+  const [availability, setAvailability] = useState('Within 1 month')
+  const [contract, setContract] = useState('Permanent')
+  const [seniority, setSeniority] = useState('Senior')
+  const [description, setDescription] = useState('')
+  const [skills, setSkills] = useState('')
+  const [perks, setPerks] = useState('')
   const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState({})
 
-  async function submit() {
-    if (!form.title || !form.location) return
-    setLoading(true)
-    const { data: company } = await supabase.from('companies').select('id').eq('owner_id', user.id).single()
-    if (!company) { setLoading(false); return }
-    await supabase.from('jobs').insert({ ...form, salary_min: parseInt(form.salary_min.replace(/[^0-9]/g,'')) || null, salary_max: parseInt(form.salary_max.replace(/[^0-9]/g,'')) || null, company_id: company.id, status: 'active' })
-    setLoading(false)
-    nav('/employer')
+  function validate() {
+    const e = {}
+    if (!title.trim() || title.trim().length < 3) e.title = 'Enter a proper job title'
+    if (!location.trim() || location.trim().length < 2) e.location = 'Enter a location'
+    if (salaryMin && salaryMax && parseInt(salaryMin) > parseInt(salaryMax)) e.salary = 'Min salary cannot be higher than max'
+    setErrors(e)
+    return Object.keys(e).length === 0
   }
 
-  const F = ({ label, field, type='text', placeholder='', component='input' }) => (
-    <div style={{ marginBottom:10 }}>
-      <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', marginBottom:4 }}>{label}</div>
-      {component==='textarea' ? (
-        <textarea value={form[field]} onChange={e => setForm({...form, [field]:e.target.value})} placeholder={placeholder}
-          style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:9, padding:'10px 12px', color:'#fff', fontSize:12, fontFamily:'inherit', outline:'none', resize:'none', height:75 }}/>
-      ) : (
-        <input type={type} value={form[field]} onChange={e => setForm({...form, [field]:e.target.value})} placeholder={placeholder}
-          style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:9, padding:'10px 12px', color:'#fff', fontSize:12, fontFamily:'inherit', outline:'none' }}/>
-      )}
-    </div>
-  )
-  const S = ({ label, field, opts }) => (
-    <div style={{ flex:1, marginBottom:10 }}>
-      <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', marginBottom:4 }}>{label}</div>
-      <select value={form[field]} onChange={e => setForm({...form, [field]:e.target.value})} style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:9, padding:'10px 12px', color:'#fff', fontSize:12, fontFamily:'inherit', outline:'none', cursor:'pointer' }}>
-        {opts.map(o => <option key={o}>{o}</option>)}
-      </select>
-    </div>
-  )
+  async function submit() {
+    if (!validate()) return
+    setLoading(true)
+    const { data: company } = await supabase.from('companies').select('id').eq('owner_id', user.id).single()
+    if (!company) {
+      setErrors({ title: 'Could not find your company. Please go back and try again.' })
+      setLoading(false)
+      return
+    }
+    const { error } = await supabase.from('jobs').insert({
+      title: title.trim(),
+      salary_min: parseInt(salaryMin.replace(/[^0-9]/g,'')) || null,
+      salary_max: parseInt(salaryMax.replace(/[^0-9]/g,'')) || null,
+      job_type: jobType,
+      work_style: workStyle,
+      location: location.trim(),
+      availability,
+      contract,
+      seniority_level: seniority,
+      description: description.trim(),
+      skills_required: skills.trim(),
+      perks: perks.trim(),
+      company_id: company.id,
+      status: 'active'
+    })
+    setLoading(false)
+    if (error) { setErrors({ title: 'Something went wrong. Please try again.' }); return }
+    nav('/employer')
+  }
 
   return (
     <>
@@ -48,30 +72,92 @@ export default function PostJob() {
         <h1>Post a role</h1>
       </div>
       <div className="scroll" style={{ background:'var(--bg)', padding:12 }}>
-        <F label="JOB TITLE *" field="title" placeholder="e.g. Senior Civil Engineer"/>
-        <div style={{ display:'flex', gap:8 }}>
-          <F label="MIN SALARY" field="salary_min" placeholder="£40,000"/>
-          <F label="MAX SALARY" field="salary_max" placeholder="£55,000"/>
+
+        <div style={{ marginBottom:10 }}>
+          <div style={labelStyle}>JOB TITLE *</div>
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Senior Civil Engineer" style={{ ...inputStyle, borderColor: errors.title ? 'var(--red)' : '' }}/>
+          {errors.title && <p style={{ fontSize:11, color:'var(--red)', marginTop:4 }}>{errors.title}</p>}
         </div>
+
         <div style={{ display:'flex', gap:8 }}>
-          <S label="JOB TYPE" field="job_type" opts={['Full-time','Part-time','Contract','Freelance']}/>
-          <S label="WORK STYLE" field="work_style" opts={['Hybrid','Remote','On-site']}/>
+          <div style={{ flex:1, marginBottom:10 }}>
+            <div style={labelStyle}>MIN SALARY</div>
+            <input value={salaryMin} onChange={e => setSalaryMin(e.target.value)} placeholder="e.g. 40000" style={inputStyle}/>
+          </div>
+          <div style={{ flex:1, marginBottom:10 }}>
+            <div style={labelStyle}>MAX SALARY</div>
+            <input value={salaryMax} onChange={e => setSalaryMax(e.target.value)} placeholder="e.g. 55000" style={inputStyle}/>
+          </div>
         </div>
-        <F label="LOCATION *" field="location" placeholder="e.g. London, EC2 or Remote — Worldwide"/>
+        {errors.salary && <p style={{ fontSize:11, color:'var(--red)', marginTop:-6, marginBottom:8 }}>{errors.salary}</p>}
+
+        <div style={{ display:'flex', gap:8 }}>
+          <div style={{ flex:1, marginBottom:10 }}>
+            <div style={labelStyle}>JOB TYPE</div>
+            <select value={jobType} onChange={e => setJobType(e.target.value)} style={selectStyle}>
+              {['Full-time','Part-time','Contract','Freelance'].map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+          <div style={{ flex:1, marginBottom:10 }}>
+            <div style={labelStyle}>WORK STYLE</div>
+            <select value={workStyle} onChange={e => setWorkStyle(e.target.value)} style={selectStyle}>
+              {['Hybrid','Remote','On-site'].map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ marginBottom:10 }}>
+          <div style={labelStyle}>LOCATION *</div>
+          <input value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. London, EC2 or Remote — Worldwide" style={{ ...inputStyle, borderColor: errors.location ? 'var(--red)' : '' }}/>
+          {errors.location && <p style={{ fontSize:11, color:'var(--red)', marginTop:4 }}>{errors.location}</p>}
+        </div>
+
         <div style={{ background:'var(--sd)', border:'0.5px solid var(--sb)', borderRadius:9, padding:'9px 12px', marginBottom:10, display:'flex', gap:6, alignItems:'center' }}>
           <i className="ti ti-calendar" style={{ fontSize:13, color:'var(--spark)', flexShrink:0 }}/>
           <span style={{ fontSize:10, color:'#bbb' }}>Start date is one of the most searched filters by candidates.</span>
         </div>
+
         <div style={{ display:'flex', gap:8 }}>
-          <S label="AVAILABILITY" field="availability" opts={['Immediate start','Within 1 month','Within 2 months','Within 3 months','Flexible — to be agreed']}/>
-          <S label="CONTRACT" field="contract" opts={['Permanent','6 months','12 months','2 years','Project-based']}/>
+          <div style={{ flex:1, marginBottom:10 }}>
+            <div style={labelStyle}>AVAILABILITY</div>
+            <select value={availability} onChange={e => setAvailability(e.target.value)} style={selectStyle}>
+              {['Immediate start','Within 1 month','Within 2 months','Within 3 months','Flexible — to be agreed'].map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+          <div style={{ flex:1, marginBottom:10 }}>
+            <div style={labelStyle}>CONTRACT</div>
+            <select value={contract} onChange={e => setContract(e.target.value)} style={selectStyle}>
+              {['Permanent','6 months','12 months','2 years','Project-based'].map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
         </div>
-        <S label="SENIORITY LEVEL" field="seniority_level" opts={['Junior / Graduate','Mid-level','Senior','Lead / Manager','Director']}/>
-        <F label="ROLE DESCRIPTION" field="description" placeholder="Describe the role, team and what success looks like..." component="textarea"/>
-        <F label="SKILLS REQUIRED" field="skills_required" placeholder="e.g. AutoCAD, Civil 3D, BIM, Project Management"/>
-        <F label="PERKS & BENEFITS (optional)" field="perks" placeholder="e.g. 25 days holiday, private healthcare, training budget..." component="textarea"/>
-        <button className="btn-primary" style={{ marginTop:4 }} onClick={submit} disabled={loading || !form.title || !form.location}>
-          {loading ? <i className="ti ti-loader spin"/> : <i className="ti ti-bolt"/>} Post role — go live instantly
+
+        <div style={{ marginBottom:10 }}>
+          <div style={labelStyle}>SENIORITY LEVEL</div>
+          <select value={seniority} onChange={e => setSeniority(e.target.value)} style={selectStyle}>
+            {['Junior / Graduate','Mid-level','Senior','Lead / Manager','Director'].map(o => <option key={o}>{o}</option>)}
+          </select>
+        </div>
+
+        <div style={{ marginBottom:10 }}>
+          <div style={labelStyle}>ROLE DESCRIPTION</div>
+          <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the role, team and what success looks like..."
+            style={{ ...inputStyle, resize:'none', height:90 }}/>
+        </div>
+
+        <div style={{ marginBottom:10 }}>
+          <div style={labelStyle}>SKILLS REQUIRED</div>
+          <input value={skills} onChange={e => setSkills(e.target.value)} placeholder="e.g. AutoCAD, Civil 3D, BIM, Project Management" style={inputStyle}/>
+        </div>
+
+        <div style={{ marginBottom:10 }}>
+          <div style={labelStyle}>PERKS & BENEFITS (optional)</div>
+          <textarea value={perks} onChange={e => setPerks(e.target.value)} placeholder="e.g. 25 days holiday, private healthcare, training budget..."
+            style={{ ...inputStyle, resize:'none', height:75 }}/>
+        </div>
+
+        <button className="btn-primary" style={{ marginTop:4 }} onClick={submit} disabled={loading}>
+          {loading ? <i className="ti ti-loader spin"/> : <i className="ti ti-bolt"/>} {loading ? 'Posting...' : 'Post role — go live instantly'}
         </button>
         <div style={{ height:16 }}/>
       </div>
