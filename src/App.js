@@ -2,13 +2,11 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import './index.css'
 
-// Auth
 import Splash from './pages/Splash'
 import SignUp from './pages/SignUp'
 import Login from './pages/Login'
 import ForgotPassword from './pages/ForgotPassword'
 
-// Onboarding
 import RolePicker from './pages/onboarding/RolePicker'
 import CandProfession from './pages/onboarding/CandProfession'
 import CandCV from './pages/onboarding/CandCV'
@@ -16,7 +14,6 @@ import CandLocation from './pages/onboarding/CandLocation'
 import EmpCompany from './pages/onboarding/EmpCompany'
 import EmpVerify from './pages/onboarding/EmpVerify'
 
-// Candidate
 import Discover from './pages/candidate/Discover'
 import Applications from './pages/candidate/Applications'
 import Sparks from './pages/candidate/Sparks'
@@ -25,7 +22,6 @@ import CandSettings from './pages/candidate/CandSettings'
 import EditProfile from './pages/candidate/EditProfile'
 import ChatScreen from './pages/ChatScreen'
 
-// Employer
 import EmpDashboard from './pages/employer/EmpDashboard'
 import Shortlist from './pages/employer/Shortlist'
 import EmpSparks from './pages/employer/EmpSparks'
@@ -34,7 +30,6 @@ import PostJob from './pages/employer/PostJob'
 import EditJob from './pages/employer/EditJob'
 import Headhunt from './pages/employer/Headhunt'
 
-// Shared
 import Premium from './pages/Premium'
 import EmpPremium from './pages/EmpPremium'
 import Notifications from './pages/Notifications'
@@ -51,6 +46,7 @@ function AppRoutes() {
     </div>
   )
 
+  // Not logged in — show auth screens
   if (!user) return (
     <div className="app-shell">
       <Routes>
@@ -63,6 +59,7 @@ function AppRoutes() {
     </div>
   )
 
+  // Logged in but not finished onboarding
   if (!profile?.onboarded) return (
     <div className="app-shell">
       <Routes>
@@ -77,10 +74,10 @@ function AppRoutes() {
     </div>
   )
 
+  // Fully onboarded
   return (
     <div className="app-shell">
       <Routes>
-        {/* Candidate */}
         <Route path="/" element={<Navigate to={profile?.active_role === 'employer' ? '/employer' : '/discover'} />} />
         <Route path="/discover" element={<Discover />} />
         <Route path="/applications" element={<Applications />} />
@@ -90,7 +87,6 @@ function AppRoutes() {
         <Route path="/settings/edit-profile" element={<EditProfile />} />
         <Route path="/premium" element={<Premium />} />
 
-        {/* Employer */}
         <Route path="/employer" element={<EmpDashboard />} />
         <Route path="/employer/shortlist/:jobId" element={<Shortlist />} />
         <Route path="/employer/sparks" element={<EmpSparks />} />
@@ -100,11 +96,9 @@ function AppRoutes() {
         <Route path="/employer/headhunt" element={<Headhunt />} />
         <Route path="/employer/premium" element={<EmpPremium />} />
 
-        {/* Shared */}
         <Route path="/chat/:matchId" element={<ChatScreen />} />
         <Route path="/notifications" element={<Notifications />} />
 
-        {/* Onboarding add-ons */}
         <Route path="/onboarding/company" element={<EmpCompany />} />
         <Route path="/onboarding/verify" element={<EmpVerify />} />
 
