@@ -37,9 +37,23 @@ export default function PostJob() {
   async function submit() {
     if (!validate()) return
     setLoading(true)
-    const { data: company } = await supabase.from('companies').select('id').eq('owner_id', user.id).single()
+    
+    // Try to find company, if not found create one on the fly
+    let { data: company } = await supabase.from('companies').select('id').eq('owner_id', user.id).maybeSingle()
+    
     if (!company) {
-      setErrors({ title: 'Could not find your company. Please go back and try again.' })
+      const { data: newCompany } = await supabase.from('companies').insert({ 
+        owner_id: user.id, 
+        name: 'My Company', 
+        location: 'Not set',
+        size: '1–10',
+        industry: 'Other'
+      }).select('id').single()
+      company = newCompany
+    }
+
+    if (!company) {
+      setErrors({ title: 'Something went wrong. Please try again.' })
       setLoading(false)
       return
     }
