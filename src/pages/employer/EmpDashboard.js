@@ -57,15 +57,15 @@ export default function EmpDashboard() {
       <div className="scroll" style={{ background:'var(--bg)' }}>
         <div style={{ padding:'10px 14px 5px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div style={{ fontSize:10, color:'var(--t3)' }}>{jobs.filter(j=>j.status==='active').length} ACTIVE ROLES</div>
-          <button className="btn-sm primary" onClick={() => nav('/employer/post-job')}><i className="ti ti-plus"/>Post role</button>
         </div>
 
         {loading && <div style={{ padding:24, textAlign:'center', color:'var(--t3)' }}><i className="ti ti-loader spin"/></div>}
         {!loading && jobs.length === 0 && (
-          <div style={{ padding:32, textAlign:'center' }}>
-            <i className="ti ti-briefcase" style={{ fontSize:32, color:'var(--t3)', display:'block', marginBottom:12 }}/>
-            <div style={{ fontSize:13, color:'var(--t3)', marginBottom:16 }}>No roles posted yet</div>
-            <button className="btn-primary" style={{ width:'auto', padding:'12px 24px' }} onClick={() => nav('/employer/post-job')}><i className="ti ti-plus"/>Post your first role</button>
+          <div style={{ padding:32, display:'flex', flexDirection:'column', alignItems:'center', gap:12 }}>
+            <i className="ti ti-briefcase" style={{ fontSize:36, color:'var(--t3)' }}/>
+            <div style={{ fontSize:15, fontWeight:500, color:'#fff' }}>No roles posted yet</div>
+            <div style={{ fontSize:12, color:'var(--t3)', textAlign:'center', marginBottom:4 }}>Post your first role and start getting applications within hours</div>
+            <button className="btn-primary" style={{ width:'auto', padding:'12px 28px' }} onClick={() => nav('/employer/post-job')}><i className="ti ti-plus"/>Post your first role</button>
           </div>
         )}
 
