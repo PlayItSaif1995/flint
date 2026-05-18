@@ -1,15 +1,75 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 
 export default function Notifications() {
   const nav = useNavigate()
+  const { user } = useAuth()
+  const [notifs, setNotifs] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const items = [
-    { icon:'AC', bg:'#4F46E5', title:'Acme Engineering sparked you — mutual match!', time:'2 minutes ago', unread:true, path:'/sparks' },
-    { icon:'NX', bg:'#7C3AED', title:'Nexus Civil is reviewing your application', time:'1 hour ago', unread:true, path:'/applications' },
-    { isCrown:true, bg:'linear-gradient(135deg,#F5A623,#E8832A)', title:'14 employers viewed your profile — see who', time:'Today', unread:false, path:'/premium' },
-    { isBolt:true, bg:'var(--bg3)', title:'8 new roles matching your preferences today', time:'This morning', unread:false, path:'/discover' },
-    { icon:'WS', bg:'#059669', title:'Whitestone Group updated the role you applied to', time:'Yesterday', unread:false, path:'/applications' },
-  ]
+  useEffect(() => { loadNotifs() }, [])
+
+  async function loadNotifs() {
+    // Load real matches and applications as notifications
+    const [{ data: matches }, { data: apps }] = await Promise.all([
+      supabase.from('matches').select('*, jobs(title, companies(name))').or(`candidate_id.eq.${user.id},employer_id.eq.${user.id}`).order('created_at', { ascending: false }).limit(20),
+      supabase.from('applications').select('*, jobs(title, companies(name))').eq('candidate_id', user.id).order('created_at', { ascending: false }).limit(20)
+    ])
+
+    const items = []
+
+    // Add match notifications
+    ;(matches || []).forEach(m => {
+      items.push({
+        id: `match-${m.id}`,
+        icon: (m.jobs?.companies?.name || 'CO').substring(0,2).toUpperCase(),
+        bg: '#4F46E5',
+        title: m.headhunt
+          ? `You received a headhunt spark from a company`
+          : `Mutual spark with ${m.jobs?.companies?.name || 'a company'} — ${m.jobs?.title || ''}`,
+        time: timeAgo(m.created_at),
+        unread: user.id === m.candidate_id ? !m.candidate_read : !m.employer_read,
+        path: `/chat/${m.id}`
+      })
+    })
+
+    // Add application status notifications
+    ;(apps || []).forEach(a => {
+      if (a.status === 'pending') return // don't show boring pending ones
+      items.push({
+        id: `app-${a.id}`,
+        icon: (a.jobs?.companies?.name || 'CO').substring(0,2).toUpperCase(),
+        bg: '#059669',
+        title: a.status === 'reviewing'
+          ? `${a.jobs?.companies?.name} is reviewing your application for ${a.jobs?.title}`
+          : a.status === 'sparked'
+          ? `${a.jobs?.companies?.name} sparked you for ${a.jobs?.title}!`
+          : `Update on your application at ${a.jobs?.companies?.name}`,
+        time: timeAgo(a.created_at),
+        unread: false,
+        path: '/applications'
+      })
+    })
+
+    // Sort by time
+    items.sort((a, b) => (b.unread ? 1 : 0) - (a.unread ? 1 : 0))
+    setNotifs(items)
+    setLoading(false)
+  }
+
+  function timeAgo(ts) {
+    if (!ts) return ''
+    const diff = Date.now() - new Date(ts).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return 'Just now'
+    if (mins < 60) return `${mins} minute${mins>1?'s':''} ago`
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return `${hrs} hour${hrs>1?'s':''} ago`
+    const days = Math.floor(hrs / 24)
+    return `${days} day${days>1?'s':''} ago`
+  }
 
   return (
     <>
@@ -17,18 +77,20 @@ export default function Notifications() {
       <div className="page-header">
         <button onClick={() => nav(-1)} style={{ background:'none', border:'none', cursor:'pointer' }}><i className="ti ti-arrow-left" style={{ fontSize:18, color:'var(--t2)' }}/></button>
         <h1>Notifications</h1>
-        <button style={{ background:'none', border:'none', cursor:'pointer', fontSize:12, color:'var(--spark)', fontFamily:'inherit' }}>Mark all read</button>
       </div>
       <div className="scroll" style={{ background:'var(--bg)' }}>
-        {items.map((item, i) => (
-          <div key={i} className={`notif-item ${item.unread ? 'unread' : ''}`} onClick={() => nav(item.path)}>
-            <div className="notif-av" style={{ background:item.bg, borderRadius:8 }}>
-              {item.isCrown
-                ? <i className="ti ti-crown" style={{ fontSize:17, color:'#000' }}/>
-                : item.isBolt
-                ? <i className="ti ti-flame" style={{ fontSize:17, color:'var(--spark)' }}/>
-                : <span style={{ fontSize:13, fontWeight:500 }}>{item.icon}</span>
-              }
+        {loading && <div style={{ padding:24, textAlign:'center', color:'var(--t3)' }}><i className="ti ti-loader spin"/></div>}
+        {!loading && notifs.length === 0 && (
+          <div style={{ padding:40, textAlign:'center', display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+            <i className="ti ti-bell-off" style={{ fontSize:32, color:'var(--t3)' }}/>
+            <div style={{ fontSize:13, color:'var(--t3)' }}>No notifications yet</div>
+            <div style={{ fontSize:11, color:'var(--t3)' }}>When you get sparks or application updates, they'll show here</div>
+          </div>
+        )}
+        {notifs.map(item => (
+          <div key={item.id} className={`notif-item ${item.unread ? 'unread' : ''}`} onClick={() => nav(item.path)}>
+            <div className="notif-av" style={{ background: item.bg, borderRadius:8 }}>
+              <span style={{ fontSize:13, fontWeight:500 }}>{item.icon}</span>
             </div>
             <div className="notif-content">
               <div className="notif-title">{item.title}</div>
