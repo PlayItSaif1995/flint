@@ -52,6 +52,7 @@ export default function CandLocation() {
       onboarded: true, 
       active_role: 'candidate', 
       role: 'candidate',
+      has_candidate_profile: true,
       full_name: user.user_metadata?.full_name || '',
       email: user.email,
     }
