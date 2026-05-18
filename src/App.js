@@ -101,8 +101,9 @@ function AppRoutes() {
 
         <Route path="/onboarding/company" element={<EmpCompany />} />
         <Route path="/onboarding/verify" element={<EmpVerify />} />
-
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="/onboarding/profession" element={<CandProfession />} />
+        <Route path="/onboarding/cv" element={<CandCV />} />
+        <Route path="/onboarding/location" element={<CandLocation />} />
       </Routes>
     </div>
   )
