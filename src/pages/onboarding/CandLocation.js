@@ -47,7 +47,7 @@ export default function CandLocation() {
     if (lat) { locData.lat = lat; locData.lon = lon }
     await supabase.from('profiles').upsert(locData)
     setLoading(false)
-    nav('/discover')
+    window.location.href = '/discover'
   }
 
   return (

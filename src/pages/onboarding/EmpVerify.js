@@ -11,9 +11,20 @@ export default function EmpVerify() {
 
   async function complete() {
     setLoading(true)
-    await supabase.from('profiles').upsert({ id: user.id, onboarded: true, active_role: 'employer', role: 'employer', work_email: form.workEmail, company_role: form.role })
-    setLoading(false)
-    nav('/employer')
+    await supabase.from('profiles').upsert({ 
+      id: user.id, 
+      onboarded: true, 
+      active_role: 'employer', 
+      role: 'employer', 
+      work_email: form.workEmail, 
+      company_role: form.role,
+      has_employer_profile: true
+    })
+    // Small delay to let auth context refresh, then force navigate
+    setTimeout(() => {
+      setLoading(false)
+      window.location.href = '/employer'
+    }, 500)
   }
 
   return (
