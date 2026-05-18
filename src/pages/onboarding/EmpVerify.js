@@ -9,7 +9,19 @@ export default function EmpVerify() {
   const [form, setForm] = useState({ workEmail:'', phone:'', role:'' })
   const [loading, setLoading] = useState(false)
 
+  const [errors, setErrors] = useState({})
+
+  function validate() {
+    const e = {}
+    if (!form.workEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.workEmail)) e.workEmail = 'Enter a valid work email address'
+    if (form.workEmail && /gmail|yahoo|hotmail|outlook|icloud/.test(form.workEmail.toLowerCase())) e.workEmail = 'Please use a work email, not a personal one'
+    if (!form.role || form.role.trim().length < 2) e.role = 'Enter your role at the company'
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
+
   async function complete() {
+    if (!validate()) return
     setLoading(true)
     await supabase.from('profiles').upsert({ 
       id: user.id, 
@@ -39,9 +51,11 @@ export default function EmpVerify() {
           <i className="ti ti-shield-check" style={{ fontSize:14, color:'var(--green)', flexShrink:0, marginTop:1 }}/>
           <p style={{ fontSize:12, color:'#bbb', lineHeight:1.5 }}>We'll send a verification link to your work email to confirm you're an authorised representative.</p>
         </div>
-        <div className="input-row"><i className="ti ti-mail"/><input type="email" placeholder="Work email *" value={form.workEmail} onChange={e => setForm({...form, workEmail:e.target.value})}/></div>
+        <div className="input-row" style={{ borderColor: errors.workEmail ? 'var(--red)' : '' }}><i className="ti ti-mail"/><input type="email" placeholder="Work email * (e.g. saif@acme.co.uk)" value={form.workEmail} onChange={e => setForm({...form, workEmail:e.target.value})}/></div>
+        {errors.workEmail && <p style={{ fontSize:11, color:'var(--red)', marginTop:-6, marginBottom:8 }}>{errors.workEmail}</p>}
         <div className="input-row"><i className="ti ti-phone"/><input type="tel" placeholder="Company phone (optional)" value={form.phone} onChange={e => setForm({...form, phone:e.target.value})}/></div>
-        <div className="input-row"><i className="ti ti-id-badge"/><input placeholder="Your role at the company" value={form.role} onChange={e => setForm({...form, role:e.target.value})}/></div>
+        <div className="input-row" style={{ borderColor: errors.role ? 'var(--red)' : '' }}><i className="ti ti-id-badge"/><input placeholder="Your role at the company * (e.g. HR Manager)" value={form.role} onChange={e => setForm({...form, role:e.target.value})}/></div>
+        {errors.role && <p style={{ fontSize:11, color:'var(--red)', marginTop:-6, marginBottom:8 }}>{errors.role}</p>}
         <div style={{ background:'var(--sd)', border:'0.5px solid var(--sb)', borderRadius:10, padding:'10px 12px', marginBottom:12, display:'flex', gap:7, alignItems:'flex-start' }}>
           <i className="ti ti-info-circle" style={{ fontSize:13, color:'var(--spark)', flexShrink:0, marginTop:1 }}/>
           <p style={{ fontSize:11, color:'#bbb', lineHeight:1.5 }}>Candidate contact details are <strong style={{ color:'var(--spark)' }}>hidden</strong> until a mutual spark.</p>

@@ -13,6 +13,10 @@ export default function CandProfession() {
   const [loading, setLoading] = useState(false)
 
   async function continueOn() {
+    if (!form.jobTitle || form.jobTitle.trim().length < 2) {
+      alert('Please enter your job title')
+      return
+    }
     setLoading(true)
     await supabase.from('profiles').upsert({ id: user.id, profession: form.profession, job_title: form.jobTitle, seniority: form.seniority, current_employer: form.employer, qualification: form.qualification })
     setLoading(false)
