@@ -11,8 +11,10 @@ export default function SignUp() {
   const [verifyScreen, setVerifyScreen] = useState(false)
 
   async function handleSubmit() {
-    if (!form.name || !form.email || !form.password) { setError('Please fill in all fields'); return }
-    if (form.password.length < 6) { setError('Password must be at least 6 characters'); return }
+    if (!form.name || form.name.trim().length < 2) { setError('Please enter your full name'); return }
+    if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { setError('Enter a valid email address'); return }
+    if (!form.password || form.password.length < 8) { setError('Password must be at least 8 characters'); return }
+    if (/^(.)\1+$/.test(form.password)) { setError('Please choose a stronger password'); return }
     setLoading(true); setError('')
     const { error: e } = await signUp(form.email, form.password, form.name, form.phone)
     setLoading(false)
