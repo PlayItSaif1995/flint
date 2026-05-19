@@ -81,7 +81,21 @@ export default function EmpVerify() {
         {errors.phone && <p style={{ fontSize:11, color:'var(--red)', marginTop:-6, marginBottom:8 }}>{errors.phone}</p>}
         <div className="input-row" style={{ borderColor: errors.role ? 'var(--red)' : '' }}>
           <i className="ti ti-id-badge"/>
-          <input placeholder="Your role at the company * (e.g. HR Manager)" value={form.role} onChange={e => setForm({...form, role:e.target.value})}/>
+          <select value={form.role} onChange={e => setForm({...form, role:e.target.value})} style={{ background:'none', border:'none', outline:'none', color: form.role ? '#fff' : 'var(--t3)', fontSize:14, fontFamily:'inherit', flex:1, cursor:'pointer' }}>
+            <option value="">Your role at the company *</option>
+            <option>CEO / Founder</option>
+            <option>Director</option>
+            <option>HR Manager</option>
+            <option>HR Director</option>
+            <option>Talent Acquisition</option>
+            <option>Recruiter</option>
+            <option>People & Culture</option>
+            <option>Office Manager</option>
+            <option>Operations Manager</option>
+            <option>Hiring Manager</option>
+            <option>Team Lead</option>
+            <option>Other</option>
+          </select>
         </div>
         {errors.role && <p style={{ fontSize:11, color:'var(--red)', marginTop:-6, marginBottom:8 }}>{errors.role}</p>}
         <div style={{ background:'var(--sd)', border:'0.5px solid var(--sb)', borderRadius:10, padding:'10px 12px', marginBottom:12, display:'flex', gap:7, alignItems:'flex-start' }}>

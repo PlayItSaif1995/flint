@@ -5,11 +5,11 @@ import { useAuth } from '../../hooks/useAuth'
 
 const inputStyle = { width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:9, padding:'10px 12px', color:'#fff', fontSize:12, fontFamily:'inherit', outline:'none' }
 const selectStyle = { ...inputStyle, cursor:'pointer' }
-const labelStyle = { fontSize:10, color:'var(--t3)', letterSpacing:'.5px', marginBottom:4 }
+const labelStyle = { fontSize:10, color:'var(--t3)', letterSpacing:'.5px', marginBottom:4, display:'block' }
 
 export default function PostJob() {
   const nav = useNavigate()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [title, setTitle] = useState('')
   const [salaryMin, setSalaryMin] = useState('')
   const [salaryMax, setSalaryMax] = useState('')
@@ -27,7 +27,7 @@ export default function PostJob() {
 
   function validate() {
     const e = {}
-    if (!title.trim() || title.trim().length < 3) e.title = 'Enter a proper job title'
+    if (!title.trim() || title.trim().length < 3) e.title = 'Enter a proper job title (at least 3 characters)'
     if (!location.trim() || location.trim().length < 2) e.location = 'Enter a location'
     if (salaryMin && salaryMax && parseInt(salaryMin) > parseInt(salaryMax)) e.salary = 'Min salary cannot be higher than max'
     setErrors(e)
@@ -37,26 +37,35 @@ export default function PostJob() {
   async function submit() {
     if (!validate()) return
     setLoading(true)
-    
-    // Try to find company, if not found create one on the fly
-    let { data: company } = await supabase.from('companies').select('id').eq('owner_id', user.id).maybeSingle()
-    
-    if (!company) {
-      const { data: newCompany } = await supabase.from('companies').insert({ 
-        owner_id: user.id, 
-        name: 'My Company', 
-        location: 'Not set',
-        size: '1–10',
-        industry: 'Other'
-      }).select('id').single()
-      company = newCompany
+
+    // Get company_id from profile first, then fall back to querying companies table
+    let companyId = profile?.company_id
+
+    if (!companyId) {
+      const { data: company } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle()
+      companyId = company?.id
     }
 
-    if (!company) {
+    // If still no company, create one automatically
+    if (!companyId) {
+      const { data: newCompany } = await supabase
+        .from('companies')
+        .insert({ owner_id: user.id, name: 'My Company', location: 'Not set', size: '1–10', industry: 'Other' })
+        .select('id')
+        .single()
+      companyId = newCompany?.id
+    }
+
+    if (!companyId) {
       setErrors({ title: 'Something went wrong. Please try again.' })
       setLoading(false)
       return
     }
+
     const { error } = await supabase.from('jobs').insert({
       title: title.trim(),
       salary_min: parseInt(salaryMin.replace(/[^0-9]/g,'')) || null,
@@ -70,11 +79,16 @@ export default function PostJob() {
       description: description.trim(),
       skills_required: skills.trim(),
       perks: perks.trim(),
-      company_id: company.id,
+      company_id: companyId,
       status: 'active'
     })
+
     setLoading(false)
-    if (error) { setErrors({ title: 'Something went wrong. Please try again.' }); return }
+    if (error) {
+      console.error('Job insert error:', error)
+      setErrors({ title: 'Could not post job. Please try again.' })
+      return
+    }
     nav('/employer')
   }
 
@@ -88,18 +102,18 @@ export default function PostJob() {
       <div className="scroll" style={{ background:'var(--bg)', padding:12 }}>
 
         <div style={{ marginBottom:10 }}>
-          <div style={labelStyle}>JOB TITLE *</div>
+          <label style={labelStyle}>JOB TITLE *</label>
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Senior Civil Engineer" style={{ ...inputStyle, borderColor: errors.title ? 'var(--red)' : '' }}/>
           {errors.title && <p style={{ fontSize:11, color:'var(--red)', marginTop:4 }}>{errors.title}</p>}
         </div>
 
         <div style={{ display:'flex', gap:8 }}>
           <div style={{ flex:1, marginBottom:10 }}>
-            <div style={labelStyle}>MIN SALARY</div>
+            <label style={labelStyle}>MIN SALARY (£)</label>
             <input value={salaryMin} onChange={e => setSalaryMin(e.target.value)} placeholder="e.g. 40000" style={inputStyle}/>
           </div>
           <div style={{ flex:1, marginBottom:10 }}>
-            <div style={labelStyle}>MAX SALARY</div>
+            <label style={labelStyle}>MAX SALARY (£)</label>
             <input value={salaryMax} onChange={e => setSalaryMax(e.target.value)} placeholder="e.g. 55000" style={inputStyle}/>
           </div>
         </div>
@@ -107,13 +121,13 @@ export default function PostJob() {
 
         <div style={{ display:'flex', gap:8 }}>
           <div style={{ flex:1, marginBottom:10 }}>
-            <div style={labelStyle}>JOB TYPE</div>
+            <label style={labelStyle}>JOB TYPE</label>
             <select value={jobType} onChange={e => setJobType(e.target.value)} style={selectStyle}>
               {['Full-time','Part-time','Contract','Freelance'].map(o => <option key={o}>{o}</option>)}
             </select>
           </div>
           <div style={{ flex:1, marginBottom:10 }}>
-            <div style={labelStyle}>WORK STYLE</div>
+            <label style={labelStyle}>WORK STYLE</label>
             <select value={workStyle} onChange={e => setWorkStyle(e.target.value)} style={selectStyle}>
               {['Hybrid','Remote','On-site'].map(o => <option key={o}>{o}</option>)}
             </select>
@@ -121,7 +135,7 @@ export default function PostJob() {
         </div>
 
         <div style={{ marginBottom:10 }}>
-          <div style={labelStyle}>LOCATION *</div>
+          <label style={labelStyle}>LOCATION *</label>
           <input value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. London, EC2 or Remote — Worldwide" style={{ ...inputStyle, borderColor: errors.location ? 'var(--red)' : '' }}/>
           {errors.location && <p style={{ fontSize:11, color:'var(--red)', marginTop:4 }}>{errors.location}</p>}
         </div>
@@ -133,13 +147,13 @@ export default function PostJob() {
 
         <div style={{ display:'flex', gap:8 }}>
           <div style={{ flex:1, marginBottom:10 }}>
-            <div style={labelStyle}>AVAILABILITY</div>
+            <label style={labelStyle}>AVAILABILITY</label>
             <select value={availability} onChange={e => setAvailability(e.target.value)} style={selectStyle}>
-              {['Immediate start','Within 1 month','Within 2 months','Within 3 months','Flexible — to be agreed'].map(o => <option key={o}>{o}</option>)}
+              {['Immediate start','Within 1 month','Within 2 months','Within 3 months','Flexible'].map(o => <option key={o}>{o}</option>)}
             </select>
           </div>
           <div style={{ flex:1, marginBottom:10 }}>
-            <div style={labelStyle}>CONTRACT</div>
+            <label style={labelStyle}>CONTRACT</label>
             <select value={contract} onChange={e => setContract(e.target.value)} style={selectStyle}>
               {['Permanent','6 months','12 months','2 years','Project-based'].map(o => <option key={o}>{o}</option>)}
             </select>
@@ -147,27 +161,25 @@ export default function PostJob() {
         </div>
 
         <div style={{ marginBottom:10 }}>
-          <div style={labelStyle}>SENIORITY LEVEL</div>
+          <label style={labelStyle}>SENIORITY LEVEL</label>
           <select value={seniority} onChange={e => setSeniority(e.target.value)} style={selectStyle}>
             {['Junior / Graduate','Mid-level','Senior','Lead / Manager','Director'].map(o => <option key={o}>{o}</option>)}
           </select>
         </div>
 
         <div style={{ marginBottom:10 }}>
-          <div style={labelStyle}>ROLE DESCRIPTION</div>
-          <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the role, team and what success looks like..."
-            style={{ ...inputStyle, resize:'none', height:90 }}/>
+          <label style={labelStyle}>ROLE DESCRIPTION</label>
+          <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the role, team and what success looks like..." style={{ ...inputStyle, resize:'none', height:90 }}/>
         </div>
 
         <div style={{ marginBottom:10 }}>
-          <div style={labelStyle}>SKILLS REQUIRED</div>
+          <label style={labelStyle}>SKILLS REQUIRED</label>
           <input value={skills} onChange={e => setSkills(e.target.value)} placeholder="e.g. AutoCAD, Civil 3D, BIM, Project Management" style={inputStyle}/>
         </div>
 
         <div style={{ marginBottom:10 }}>
-          <div style={labelStyle}>PERKS & BENEFITS (optional)</div>
-          <textarea value={perks} onChange={e => setPerks(e.target.value)} placeholder="e.g. 25 days holiday, private healthcare, training budget..."
-            style={{ ...inputStyle, resize:'none', height:75 }}/>
+          <label style={labelStyle}>PERKS & BENEFITS (optional)</label>
+          <textarea value={perks} onChange={e => setPerks(e.target.value)} placeholder="e.g. 25 days holiday, private healthcare, training budget..." style={{ ...inputStyle, resize:'none', height:75 }}/>
         </div>
 
         <button className="btn-primary" style={{ marginTop:4 }} onClick={submit} disabled={loading}>

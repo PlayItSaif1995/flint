@@ -11,21 +11,14 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      } else {
-        setLoading(false)
-      }
+      if (session?.user) fetchProfile(session.user.id)
+      else setLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      } else {
-        setProfile(null)
-        setLoading(false)
-      }
+      if (session?.user) fetchProfile(session.user.id)
+      else { setProfile(null); setLoading(false) }
     })
 
     return () => subscription.unsubscribe()
@@ -33,11 +26,7 @@ export function AuthProvider({ children }) {
 
   async function fetchProfile(userId) {
     try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle()
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
       setProfile(data || null)
     } catch (e) {
       setProfile(null)
@@ -48,10 +37,21 @@ export function AuthProvider({ children }) {
 
   async function signUp(email, password, fullName, phone) {
     const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
+      email, password,
       options: { data: { full_name: fullName, phone } }
     })
+    if (!error && data.user) {
+      // Create profile row immediately on signup
+      await supabase.from('profiles').upsert({
+        id: data.user.id,
+        full_name: fullName,
+        email: email,
+        phone: phone || null,
+        onboarded: false,
+        role: 'candidate',
+        active_role: 'candidate',
+      })
+    }
     return { data, error }
   }
 
