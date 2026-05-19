@@ -20,7 +20,18 @@ export default function Applications() {
   const [filter, setFilter] = useState('All')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { loadApps() }, [])
+  const [withdrawing, setWithdrawing] = useState(null)
+
+  async function withdrawApp(app) {
+    setWithdrawing(app.id)
+    await supabase.from('applications').delete().eq('id', app.id)
+    // Remove from localStorage too
+    const applied = JSON.parse(localStorage.getItem(`applied_${user.id}`) || '[]')
+    const updated = applied.filter(id => id !== app.jobs?.id)
+    localStorage.setItem(`applied_${user.id}`, JSON.stringify(updated))
+    setApps(prev => prev.filter(a => a.id !== app.id))
+    setWithdrawing(null)
+  }
 
   async function loadApps() {
     const { data } = await supabase.from('applications').select('*, jobs(title, salary_min, salary_max, work_style, companies(name, location))').eq('candidate_id', user.id).order('created_at', { ascending:false })
@@ -79,6 +90,12 @@ export default function Applications() {
                 ))}
               </div>
               {app.status === 'sparked' && <div style={{ marginTop:8, fontSize:10, color:'var(--green)', display:'flex', alignItems:'center', gap:4 }}><i className="ti ti-message-circle" style={{ fontSize:12 }}/>New message — tap to open chat</div>}
+              {app.status !== 'sparked' && app.status !== 'closed' && (
+                <button onClick={e => { e.stopPropagation(); withdrawApp(app) }} disabled={withdrawing === app.id}
+                  style={{ marginTop:8, background:'none', border:'none', fontSize:11, color:'var(--t3)', fontFamily:'inherit', cursor:'pointer', display:'flex', alignItems:'center', gap:4, padding:0 }}>
+                  <i className="ti ti-x" style={{ fontSize:12 }}/>{withdrawing === app.id ? 'Withdrawing...' : 'Withdraw application'}
+                </button>
+              )}
             </div>
           )
         })}

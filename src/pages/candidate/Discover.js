@@ -69,12 +69,25 @@ export default function Discover() {
     if (!jobs[idx]) return
     const job = jobs[idx]
     const applied = JSON.parse(localStorage.getItem(`applied_${user.id}`) || '[]')
+    if (applied.includes(job.id)) {
+      showToast('Already applied!', 'ti-info-circle', 'var(--t2)')
+      return
+    }
     applied.push(job.id)
     localStorage.setItem(`applied_${user.id}`, JSON.stringify(applied))
-    // Save to DB
-    await supabase.from('applications').upsert({ candidate_id: user.id, job_id: job.id, status: 'pending' })
+    const { error } = await supabase.from('applications').insert({ 
+      candidate_id: user.id, 
+      job_id: job.id, 
+      status: 'pending' 
+    })
+    if (error) {
+      console.error('Apply error:', error)
+      showToast('Failed to apply. Try again.', 'ti-x', 'var(--red)')
+      return
+    }
     setSwiping('right')
-    setTimeout(() => { setSwiping(null); setIdx(i => i+1); nav('/applied-confirm') }, 350)
+    showToast('Applied! 🔥', 'ti-flame', 'var(--spark)')
+    setTimeout(() => { setSwiping(null); setIdx(i => i+1) }, 350)
   }
 
   function doSave() {

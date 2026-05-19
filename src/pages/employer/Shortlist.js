@@ -15,10 +15,14 @@ export default function Shortlist() {
   useEffect(() => { loadData() }, [jobId])
 
   async function loadData() {
-    const [{ data: jobData }, { data: apps }] = await Promise.all([
-      supabase.from('jobs').select('*, companies(name)').eq('id', jobId).single(),
-      supabase.from('applications').select('*, profiles(full_name, job_title, profession, seniority, current_employer, skills, location_name, bio)').eq('job_id', jobId).order('created_at', { ascending:false })
-    ])
+    const { data: jobData } = await supabase.from('jobs').select('*, companies(name)').eq('id', jobId).single()
+    const { data: apps, error } = await supabase
+      .from('applications')
+      .select('id, candidate_id, status, created_at, profiles(full_name, job_title, profession, seniority, current_employer, skills, location_name, bio)')
+      .eq('job_id', jobId)
+      .order('created_at', { ascending: false })
+    
+    if (error) console.error('Shortlist load error:', error)
     setJob(jobData)
     setApplicants(apps || [])
     setLoading(false)
