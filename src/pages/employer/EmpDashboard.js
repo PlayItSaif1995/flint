@@ -47,9 +47,8 @@ export default function EmpDashboard() {
           <button onClick={() => nav('/employer/post-job')} style={{ background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:8, width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
             <i className="ti ti-plus" style={{ fontSize:16, color:'var(--t2)' }}/>
           </button>
-          <button onClick={() => nav('/notifications')} style={{ background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:8, width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
+          <button onClick={() => nav('/notifications')} style={{ background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:8, width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
             <i className="ti ti-bell" style={{ fontSize:16, color:'var(--t2)' }}/>
-            <div style={{ position:'absolute', top:4, right:4, width:6, height:6, background:'var(--spark)', borderRadius:'50%', border:'1.5px solid var(--bg3)' }}/>
           </button>
         </div>
       </div>
