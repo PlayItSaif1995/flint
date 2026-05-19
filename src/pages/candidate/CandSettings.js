@@ -1,15 +1,39 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { supabase } from '../../lib/supabase'
 
 export default function CandSettings() {
   const nav = useNavigate()
-  const { profile, signOut } = useAuth()
+  const { profile, signOut, user } = useAuth()
   const [showLogout, setShowLogout] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const hasEmpProfile = profile?.has_employer_profile
 
   async function handleLogout() { await signOut(); nav('/') }
+
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      // Clean up all user data first
+      await supabase.from('messages').delete().eq('sender_id', user.id)
+      await supabase.from('matches').delete().or(`candidate_id.eq.${user.id},employer_id.eq.${user.id}`)
+      await supabase.from('applications').delete().eq('candidate_id', user.id)
+      await supabase.from('jobs').delete().in('company_id', 
+        (await supabase.from('companies').select('id').eq('owner_id', user.id)).data?.map(c => c.id) || []
+      )
+      await supabase.from('companies').delete().eq('owner_id', user.id)
+      await supabase.from('profiles').delete().eq('id', user.id)
+      // Sign out — user will need to contact support to fully remove auth account
+      // or sign up with same email after a few minutes
+      await supabase.auth.signOut()
+      window.location.href = '/'
+    } catch (e) {
+      console.error('Delete error:', e)
+      setDeleting(false)
+    }
+  }
 
   return (
     <>
@@ -127,9 +151,11 @@ export default function CandSettings() {
         <div className="modal-overlay" onClick={() => setShowDelete(false)}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="modal-title">Delete your account?</div>
-            <div className="modal-sub">This permanently deletes all your data — CV, applications, sparks and chat history. This cannot be undone.</div>
+            <div className="modal-sub">This permanently deletes all your data — CV, applications, sparks and messages. You can sign up again with the same email after a few minutes.</div>
             <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
-              <button className="btn-primary" style={{ background:'var(--red)', color:'#fff', marginBottom:0 }} onClick={handleLogout}><i className="ti ti-trash"/> Yes, delete my account</button>
+              <button className="btn-primary" style={{ background:'var(--red)', color:'#fff', marginBottom:0 }} onClick={handleDelete} disabled={deleting}>
+                {deleting ? <i className="ti ti-loader spin"/> : <i className="ti ti-trash"/>} {deleting ? 'Deleting...' : 'Yes, delete my account'}
+              </button>
               <button className="btn-secondary" onClick={() => setShowDelete(false)}>Cancel</button>
             </div>
           </div>
