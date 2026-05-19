@@ -25,12 +25,19 @@ export function AuthProvider({ children }) {
   }, [])
 
   async function fetchProfile(userId) {
+    // Safety timeout — never stay black for more than 5 seconds
+    const timeout = setTimeout(() => setLoading(false), 5000)
     try {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
       setProfile(data || null)
     } catch (e) {
       setProfile(null)
     } finally {
+      clearTimeout(timeout)
       setLoading(false)
     }
   }
@@ -41,7 +48,6 @@ export function AuthProvider({ children }) {
       options: { data: { full_name: fullName, phone } }
     })
     if (!error && data.user) {
-      // Create profile row immediately on signup
       await supabase.from('profiles').upsert({
         id: data.user.id,
         full_name: fullName,
@@ -62,6 +68,8 @@ export function AuthProvider({ children }) {
 
   async function signOut() {
     await supabase.auth.signOut()
+    setUser(null)
+    setProfile(null)
   }
 
   async function refreshProfile() {
