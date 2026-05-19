@@ -8,9 +8,14 @@ const SENIORITY = ['Junior / Graduate (0–2 yrs)','Mid-level (3–6 yrs)','Seni
 
 export default function CandProfession() {
   const nav = useNavigate()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [form, setForm] = useState({ profession:'Civil Engineer', jobTitle:'', seniority:'Senior (7–12 yrs)', employer:'', qualification:'' })
   const [loading, setLoading] = useState(false)
+
+  function goBack() {
+    if (profile?.onboarded) nav('/settings')
+    else nav('/onboarding')
+  }
 
   async function continueOn() {
     if (!form.jobTitle || form.jobTitle.trim().length < 2) {
@@ -27,7 +32,7 @@ export default function CandProfession() {
     <>
       <div className="status-bar"><span>9:41</span><div className="status-icons"><i className="ti ti-wifi"/><i className="ti ti-battery-2"/></div></div>
       <div className="ob-wrap">
-        <button className="back-btn" onClick={() => nav('/onboarding')}><i className="ti ti-arrow-left"/> Back</button>
+        <button className="back-btn" onClick={goBack}><i className="ti ti-arrow-left"/> Back</button>
         <div className="ob-progress"><div className="ob-step done"/><div className="ob-step done"/><div className="ob-step"/><div className="ob-step"/></div>
         <div className="ob-h">What do you do?</div>
         <div className="ob-sub">Your profession is the first thing employers see.</div>
@@ -43,7 +48,12 @@ export default function CandProfession() {
           </select>
         </div>
         <div className="input-row"><i className="ti ti-building"/><input placeholder="Current employer (optional)" value={form.employer} onChange={e => setForm({...form, employer:e.target.value})}/></div>
-        <div className="input-row"><i className="ti ti-school"/><input placeholder="Highest qualification" value={form.qualification} onChange={e => setForm({...form, qualification:e.target.value})}/></div>
+        <div className="input-row"><i className="ti ti-school"/>
+          <select value={form.qualification} onChange={e => setForm({...form, qualification:e.target.value})}>
+            <option value="">Highest qualification</option>
+            {['GCSE / O-Level','A-Levels / IB','HNC / HND','Foundation Degree','Bachelor\'s Degree (BEng / BSc / BA)','Master\'s Degree (MEng / MSc / MA / MBA)','PhD / Doctorate','Professional Qualification (e.g. RICS, ACA)','Apprenticeship','Other'].map(q => <option key={q}>{q}</option>)}
+          </select>
+        </div>
         <div style={{ marginTop:'auto' }}>
           <button className="btn-primary" onClick={continueOn} disabled={loading}>
             {loading ? <i className="ti ti-loader spin"/> : null} Continue <i className="ti ti-arrow-right"/>

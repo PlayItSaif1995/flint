@@ -1,119 +1,105 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 
-const RADII = ['Within 10 miles of my location','Within 25 miles of my location','Within 50 miles of my location','Within 100 miles of my location','Anywhere in my country','Anywhere in the world']
+const COUNTRIES = ['United Kingdom','United States','Canada','Australia','Ireland','Germany','France','Netherlands','UAE','Singapore','Other']
+
+const CITIES = {
+  'United Kingdom': ['London','Manchester','Birmingham','Leeds','Edinburgh','Glasgow','Bristol','Liverpool','Sheffield','Newcastle','Cardiff','Belfast','Oxford','Cambridge','Other'],
+  'United States': ['New York','Los Angeles','Chicago','Houston','Phoenix','Philadelphia','San Antonio','San Diego','Dallas','San Francisco','Other'],
+  'Canada': ['Toronto','Vancouver','Montreal','Calgary','Ottawa','Edmonton','Other'],
+  'Australia': ['Sydney','Melbourne','Brisbane','Perth','Adelaide','Other'],
+  'Ireland': ['Dublin','Cork','Galway','Limerick','Other'],
+  'Germany': ['Berlin','Munich','Hamburg','Frankfurt','Cologne','Other'],
+  'France': ['Paris','Lyon','Marseille','Toulouse','Other'],
+  'Netherlands': ['Amsterdam','Rotterdam','The Hague','Utrecht','Other'],
+  'UAE': ['Dubai','Abu Dhabi','Sharjah','Other'],
+  'Singapore': ['Singapore'],
+  'Other': ['Other']
+}
+
+const RADII = ['Within 10 miles','Within 25 miles','Within 50 miles','Within 100 miles','Anywhere in my country','Anywhere in the world']
 
 export default function CandLocation() {
   const nav = useNavigate()
-  const { user } = useAuth()
-  const [locState, setLocState] = useState('detecting') // detecting | found | error
-  const [cityName, setCityName] = useState('')
-  const [lat, setLat] = useState(null)
-  const [lon, setLon] = useState(null)
-  const [manualLoc, setManualLoc] = useState('')
-  const [radius, setRadius] = useState('Within 25 miles of my location')
+  const { user, profile } = useAuth()
+  const [country, setCountry] = useState('United Kingdom')
+  const [city, setCity] = useState('London')
+  const [radius, setRadius] = useState('Within 25 miles')
   const [salary, setSalary] = useState('£50k+')
   const [workStyle, setWorkStyle] = useState('Hybrid')
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => { detectLocation() }, [])
+  function goBack() {
+    if (profile?.onboarded) nav('/settings')
+    else nav('/onboarding/cv')
+  }
 
-  function detectLocation() {
-    setLocState('detecting')
-    if (!navigator.geolocation) { setLocState('error'); return }
-    navigator.geolocation.getCurrentPosition(
-      async pos => {
-        const { latitude, longitude } = pos.coords
-        setLat(latitude); setLon(longitude)
-        try {
-          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`)
-          const d = await r.json()
-          const a = d.address
-          const city = a.city || a.town || a.village || a.county || 'Your location'
-          const country = (a.country_code || '').toUpperCase()
-          setCityName(`${city}${country ? ', '+country : ''}`)
-          setLocState('found')
-        } catch { setCityName('Location detected'); setLocState('found') }
-      },
-      () => setLocState('error')
-    )
+  function handleCountryChange(c) {
+    setCountry(c)
+    setCity(CITIES[c]?.[0] || 'Other')
   }
 
   async function continueOn() {
     setLoading(true)
-    const locData = { 
-      id: user.id, 
-      location_name: cityName || manualLoc, 
-      search_radius: radius, 
-      min_salary: salary, 
-      work_style: workStyle, 
-      onboarded: true, 
-      active_role: 'candidate', 
+    const locationName = city === 'Other' ? country : `${city}, ${country}`
+    const locData = {
+      id: user.id,
+      location_name: locationName,
+      search_radius: radius,
+      min_salary: salary,
+      work_style: workStyle,
+      onboarded: true,
+      active_role: 'candidate',
       role: 'candidate',
       has_candidate_profile: true,
-      full_name: user.user_metadata?.full_name || '',
+      full_name: user.user_metadata?.full_name || profile?.full_name || '',
       email: user.email,
     }
-    if (lat) { locData.lat = lat; locData.lon = lon }
-    await supabase.from('profiles').upsert(locData)
+    await supabase.from('profiles').upsert(locData, { onConflict: 'id' })
     setLoading(false)
-    window.location.href = '/discover'
+    window.location.replace('/discover')
   }
 
   return (
     <>
       <div className="status-bar"><span>9:41</span><div className="status-icons"><i className="ti ti-wifi"/><i className="ti ti-battery-2"/></div></div>
       <div className="ob-wrap">
-        <button className="back-btn" onClick={() => nav('/onboarding/cv')}><i className="ti ti-arrow-left"/> Back</button>
+        <button className="back-btn" onClick={goBack}><i className="ti ti-arrow-left"/> Back</button>
         <div className="ob-progress"><div className="ob-step done"/><div className="ob-step done"/><div className="ob-step done"/><div className="ob-step done"/></div>
         <div className="ob-h">Where are you based?</div>
-        <div className="ob-sub">We use your real location to find roles within your preferred distance. We never share your exact coordinates.</div>
+        <div className="ob-sub">We use your location to find roles nearby. We never share your exact address.</div>
 
-        <div style={{ background:'var(--bg2)', border:'0.5px solid var(--border)', borderRadius:13, padding:14, marginBottom:14 }}>
-          {locState === 'detecting' && (
-            <div style={{ display:'flex', alignItems:'center', gap:10, fontSize:13, color:'var(--t2)' }}>
-              <i className="ti ti-loader spin" style={{ fontSize:18, color:'var(--spark)' }}/>
-              <span>Detecting your location...</span>
-            </div>
-          )}
-          {locState === 'found' && (
-            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <div style={{ width:38, height:38, background:'var(--gd)', border:'0.5px solid var(--gb)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <i className="ti ti-map-pin-check" style={{ fontSize:18, color:'var(--green)' }}/>
-              </div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:14, fontWeight:500, color:'#fff' }}>{cityName}</div>
-                <div style={{ fontSize:10, color:'var(--t3)' }}>Location detected successfully</div>
-              </div>
-              <button onClick={detectLocation} style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, color:'var(--spark)', fontFamily:'inherit' }}>Change</button>
-            </div>
-          )}
-          {locState === 'error' && (
-            <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
-              <i className="ti ti-alert-triangle" style={{ fontSize:15, color:'var(--spark)', flexShrink:0, marginTop:1 }}/>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:12, color:'#bbb', lineHeight:1.5, marginBottom:8 }}>Location denied. Enter manually:</p>
-                <input type="text" placeholder="e.g. London, UK" value={manualLoc} onChange={e => { setManualLoc(e.target.value); setCityName(e.target.value) }}
-                  style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:8, padding:'9px 11px', color:'#fff', fontSize:12, fontFamily:'inherit', outline:'none' }}/>
-              </div>
-            </div>
-          )}
+        <div className="sec-label">COUNTRY</div>
+        <div className="input-row" style={{ marginBottom:10 }}>
+          <i className="ti ti-world"/>
+          <select value={country} onChange={e => handleCountryChange(e.target.value)}>
+            {COUNTRIES.map(c => <option key={c}>{c}</option>)}
+          </select>
+        </div>
+
+        <div className="sec-label">CITY</div>
+        <div className="input-row" style={{ marginBottom:10 }}>
+          <i className="ti ti-building-skyscraper"/>
+          <select value={city} onChange={e => setCity(e.target.value)}>
+            {(CITIES[country] || ['Other']).map(c => <option key={c}>{c}</option>)}
+          </select>
         </div>
 
         <div className="sec-label">SEARCH RADIUS</div>
-        <div className="input-row" style={{ marginBottom:12 }}>
+        <div className="input-row" style={{ marginBottom:14 }}>
           <i className="ti ti-radar"/>
           <select value={radius} onChange={e => setRadius(e.target.value)}>
             {RADII.map(r => <option key={r}>{r}</option>)}
           </select>
         </div>
+
         <div className="sec-label">JOB PREFERENCES</div>
         <div className="input-row">
           <i className="ti ti-currency-pound"/>
           <select value={salary} onChange={e => setSalary(e.target.value)}>
-            {['£20k+','£30k+','£40k+','£50k+','£60k+','£70k+','£90k+','£120k+'].map(s => <option key={s}>{s}</option>)}
+            {['£20k+','£30k+','£40k+','£50k+','£60k+','£70k+','£90k+','£120k+','$50k+','$75k+','$100k+','$150k+'].map(s => <option key={s}>{s}</option>)}
           </select>
         </div>
         <div className="input-row">
@@ -124,8 +110,8 @@ export default function CandLocation() {
         </div>
 
         <div style={{ marginTop:'auto' }}>
-          <button className="btn-primary" onClick={continueOn} disabled={loading || (locState !== 'found' && !manualLoc)}>
-            {loading ? <i className="ti ti-loader spin"/> : null} Start finding roles <i className="ti ti-flame"/>
+          <button className="btn-primary" onClick={continueOn} disabled={loading}>
+            {loading ? <i className="ti ti-loader spin"/> : <i className="ti ti-flame"/>} {loading ? 'Setting up...' : 'Start finding roles'}
           </button>
         </div>
       </div>
