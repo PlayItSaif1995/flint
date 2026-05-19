@@ -6,7 +6,7 @@ import EmpNav from '../../components/EmpNav'
 
 export default function EmpDashboard() {
   const nav = useNavigate()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
   const [showDel, setShowDel] = useState(null)
@@ -14,9 +14,18 @@ export default function EmpDashboard() {
   useEffect(() => { loadJobs() }, [])
 
   async function loadJobs() {
-    const { data: company } = await supabase.from('companies').select('id').eq('owner_id', user.id).single()
-    if (!company) { setLoading(false); return }
-    const { data } = await supabase.from('jobs').select('*, applications(count)').eq('company_id', company.id).order('created_at', { ascending:false })
+    // Try profile company_id first, then fall back to owner_id lookup
+    let companyId = null
+    
+    if (profile?.company_id) {
+      companyId = profile.company_id
+    } else {
+      const { data: company } = await supabase.from('companies').select('id').eq('owner_id', user.id).maybeSingle()
+      companyId = company?.id
+    }
+
+    if (!companyId) { setLoading(false); return }
+    const { data } = await supabase.from('jobs').select('*, applications(count)').eq('company_id', companyId).order('created_at', { ascending:false })
     setJobs(data || [])
     setLoading(false)
   }
