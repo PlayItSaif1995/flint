@@ -1,9 +1,21 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../hooks/useAuth'
 
 export default function RolePicker() {
   const nav = useNavigate()
+  const { profile } = useAuth()
   const [role, setRole] = useState('candidate')
+
+  function goBack() {
+    if (profile?.onboarded) {
+      // Already onboarded — go back to wherever they came from
+      if (profile.active_role === 'employer') nav('/employer/settings')
+      else nav('/settings')
+    } else {
+      nav('/')
+    }
+  }
 
   function continueOn() {
     if (role === 'employer') nav('/onboarding/company')
@@ -14,6 +26,7 @@ export default function RolePicker() {
     <>
       <div className="status-bar"><span>9:41</span><div className="status-icons"><i className="ti ti-wifi"/><i className="ti ti-battery-2"/></div></div>
       <div className="ob-wrap">
+        <button className="back-btn" onClick={goBack}><i className="ti ti-arrow-left"/> Back</button>
         <div className="ob-progress"><div className="ob-step done"/><div className="ob-step"/><div className="ob-step"/><div className="ob-step"/></div>
         <div className="ob-h">How are you using Flint?</div>
         <div className="ob-sub">We'll tailor your experience. You can always add the other profile later.</div>
