@@ -20,17 +20,22 @@ export default function Notifications() {
 
     const items = []
 
-    // Add match notifications
+    // Add match notifications — only show from the other person's perspective
     ;(matches || []).forEach(m => {
+      const isCandidate = user.id === m.candidate_id
+      // Skip headhunt matches where user is the employer (they sent it, not received it)
+      if (m.headhunt && !isCandidate) return
       items.push({
         id: `match-${m.id}`,
         icon: (m.jobs?.companies?.name || 'CO').substring(0,2).toUpperCase(),
         bg: '#4F46E5',
         title: m.headhunt
-          ? `You received a headhunt spark from a company`
-          : `Mutual spark with ${m.jobs?.companies?.name || 'a company'} — ${m.jobs?.title || ''}`,
+          ? `A company sent you a headhunt spark!`
+          : isCandidate
+            ? `${m.jobs?.companies?.name || 'A company'} sparked you — mutual match!`
+            : `You sparked a candidate for ${m.jobs?.title || 'a role'}`,
         time: timeAgo(m.created_at),
-        unread: user.id === m.candidate_id ? !m.candidate_read : !m.employer_read,
+        unread: isCandidate ? !m.candidate_read : !m.employer_read,
         path: `/chat/${m.id}`
       })
     })

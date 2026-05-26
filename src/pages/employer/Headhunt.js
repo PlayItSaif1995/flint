@@ -28,7 +28,14 @@ export default function Headhunt() {
   async function loadCandidates() {
     const { data } = await supabase.from('profiles').select('*').eq('role', 'candidate').eq('onboarded', true).limit(50)
     setCandidates(data || [])
+    const { data: existing } = await supabase.from('matches').select('candidate_id').eq('employer_id', user.id).eq('headhunt', true)
+    setSparkedIds((existing || []).map(m => m.candidate_id))
     setLoading(false)
+  }
+
+  function getMatchScore(candidateId) {
+    const hash = (candidateId || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+    return 70 + (hash % 25)
   }
 
   const filtered = candidates.filter(c => {
@@ -45,8 +52,16 @@ export default function Headhunt() {
   const activeFilters = [profession, seniority, availability, workStyle].filter(f => !f.startsWith('Any')).length
 
   async function sendHeadhuntSpark(candidate) {
-    const { data: company } = await supabase.from('companies').select('id').eq('owner_id', user.id).single()
-    await supabase.from('matches').insert({ candidate_id: candidate.id, employer_id: user.id, company_id: company?.id, status: 'headhunt', candidate_read: false, employer_read: true, headhunt: true, last_message_at: new Date().toISOString() })
+    const { data: company } = await supabase.from('companies').select('id').eq('owner_id', user.id).maybeSingle()
+    const { data: existing } = await supabase.from('matches')
+      .select('id').eq('candidate_id', candidate.id).eq('employer_id', user.id).eq('headhunt', true).maybeSingle()
+    if (!existing) {
+      await supabase.from('matches').insert({ 
+        candidate_id: candidate.id, employer_id: user.id, company_id: company?.id, 
+        status: 'headhunt', candidate_read: false, employer_read: true, 
+        headhunt: true, last_message_at: new Date().toISOString() 
+      })
+    }
     setSparkedIds(prev => [...prev, candidate.id])
     setShowModal(null)
   }
@@ -131,7 +146,7 @@ export default function Headhunt() {
                   <div style={{ fontSize:14, fontWeight:500, color:'#fff' }}>{(c.full_name||'').split(' ')[0]} {(c.full_name||'').split(' ').slice(-1)[0]?.[0]}.</div>
                   <div style={{ fontSize:11, color:'var(--spark)' }}>{c.job_title || c.profession} · {c.location_name || 'Location not set'}</div>
                 </div>
-                <div style={{ fontSize:13, fontWeight:500, color:'var(--spark)' }}>{Math.floor(75+Math.random()*20)}%</div>
+                <div style={{ fontSize:13, fontWeight:500, color:'var(--spark)' }}>{getMatchScore(c.id)}%</div>
               </div>
               {c.seniority && <div style={{ fontSize:10, color:'var(--t2)', marginBottom:6 }}>{c.seniority}</div>}
               {c.skills && <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:7 }}>{c.skills.split(',').slice(0,4).map(s=><span key={s} style={{ background:'var(--bg4)', border:'0.5px solid var(--border)', borderRadius:99, padding:'2px 8px', fontSize:10, color:'var(--t2)' }}>{s.trim()}</span>)}</div>}

@@ -29,8 +29,34 @@ export default function Shortlist() {
   }
 
   async function sparkCandidate(app) {
-    const { data: company } = await supabase.from('companies').select('id').eq('owner_id', user.id).single()
-    await supabase.from('matches').upsert({ candidate_id: app.candidate_id, employer_id: user.id, job_id: jobId, company_id: company?.id, status: 'matched', candidate_read: false, employer_read: true, last_message_at: new Date().toISOString() })
+    // Get company - try profile first then query
+    let companyId = null
+    const { data: company } = await supabase.from('companies').select('id').eq('owner_id', user.id).maybeSingle()
+    companyId = company?.id
+
+    if (!companyId) {
+      console.error('No company found for user', user.id)
+      return
+    }
+
+    // Check if match already exists
+    const { data: existing } = await supabase.from('matches')
+      .select('id').eq('candidate_id', app.candidate_id).eq('job_id', jobId).maybeSingle()
+
+    if (!existing) {
+      const { error } = await supabase.from('matches').insert({ 
+        candidate_id: app.candidate_id, 
+        employer_id: user.id, 
+        job_id: jobId, 
+        company_id: companyId, 
+        status: 'matched', 
+        candidate_read: false, 
+        employer_read: true, 
+        last_message_at: new Date().toISOString() 
+      })
+      if (error) { console.error('Match insert error:', error); return }
+    }
+
     await supabase.from('applications').update({ status: 'sparked' }).eq('id', app.id)
     setApplicants(prev => prev.map(a => a.id === app.id ? {...a, status:'sparked'} : a))
   }
