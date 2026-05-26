@@ -16,23 +16,12 @@ export default function CandSettings() {
   async function handleDelete() {
     setDeleting(true)
     try {
-      // Clean up all user data first
-      await supabase.from('messages').delete().eq('sender_id', user.id)
-      await supabase.from('matches').delete().or(`candidate_id.eq.${user.id},employer_id.eq.${user.id}`)
-      await supabase.from('applications').delete().eq('candidate_id', user.id)
-      await supabase.from('jobs').delete().in('company_id', 
-        (await supabase.from('companies').select('id').eq('owner_id', user.id)).data?.map(c => c.id) || []
-      )
-      await supabase.from('companies').delete().eq('owner_id', user.id)
-      await supabase.from('profiles').delete().eq('id', user.id)
-      // Sign out — user will need to contact support to fully remove auth account
-      // or sign up with same email after a few minutes
-      await supabase.auth.signOut()
-      window.location.href = '/'
+      await supabase.functions.invoke('delete-user', { body: { user_id: user.id } })
     } catch (e) {
       console.error('Delete error:', e)
-      setDeleting(false)
     }
+    await supabase.auth.signOut()
+    window.location.href = '/'
   }
 
   return (
