@@ -9,7 +9,40 @@ export default function CandSettings() {
   const [showLogout, setShowLogout] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [sheet, setSheet] = useState(null) // { field, label, type, options, value }
+  const [cvUploading, setCvUploading] = useState(false)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [sheet, setSheet] = useState(null)
+
+  async function handleCVUpload(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) { alert('File must be under 5MB'); return }
+    setCvUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `${user.id}/cv.${ext}`
+    const { error } = await supabase.storage.from('cvs').upload(path, file, { upsert: true })
+    if (!error) {
+      await supabase.from('profiles').update({ cv_path: path }).eq('id', user.id)
+      await refreshProfile()
+    }
+    setCvUploading(false)
+  }
+
+  async function handleAvatarUpload(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 3 * 1024 * 1024) { alert('Image must be under 3MB'); return }
+    setAvatarUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `${user.id}/avatar.${ext}`
+    const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+    if (!error) {
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
+      await refreshProfile()
+    }
+    setAvatarUploading(false)
+  } // { field, label, type, options, value }
   const [sheetValue, setSheetValue] = useState('')
   const [saving, setSaving] = useState(false)
   const [notifs, setNotifs] = useState({ new_sparks:true, app_updates:true, new_messages:true, open_to_work:true })
@@ -67,8 +100,17 @@ export default function CandSettings() {
       <div className="scroll" style={{ background:'var(--bg)' }}>
         {/* Hero */}
         <div style={{ padding:16, display:'flex', flexDirection:'column', alignItems:'center', gap:5, borderBottom:'0.5px solid var(--border)', background:'var(--bg2)' }}>
-          <div onClick={() => nav('/settings/edit-profile', { state:{ from:'settings' } })} style={{ width:68, height:68, borderRadius:'50%', background:'var(--spark)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:21, fontWeight:500, color:'#000', cursor:'pointer', position:'relative' }}>
-            {(profile?.full_name || 'U').split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase()}
+          <input type="file" id="avatar-upload" accept="image/jpeg,image/png,image/webp" style={{ display:'none' }} onChange={handleAvatarUpload}/>
+          <div onClick={() => document.getElementById('avatar-upload').click()} style={{ width:68, height:68, borderRadius:'50%', background:'var(--spark)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:21, fontWeight:500, color:'#000', cursor:'pointer', position:'relative', overflow:'hidden' }}>
+            {profile?.avatar_url
+              ? <img src={profile.avatar_url} alt="avatar" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+              : (profile?.full_name || 'U').split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase()
+            }
+            {avatarUploading && (
+              <div style={{ position:'absolute', inset:0, background:'#000a', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <i className="ti ti-loader spin" style={{ fontSize:18, color:'#fff' }}/>
+              </div>
+            )}
             <div style={{ position:'absolute', bottom:0, right:0, width:22, height:22, background:'var(--bg2)', border:'0.5px solid var(--border)', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center' }}>
               <i className="ti ti-camera" style={{ fontSize:10, color:'var(--t2)' }}/>
             </div>
@@ -119,11 +161,13 @@ export default function CandSettings() {
           <div className="s-row" onClick={() => nav('/settings/edit-profile', { state:{ from:'settings' } })}>
             <div className="s-icon sp"><i className="ti ti-user"/></div><div className="s-label">Edit full profile</div><i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
           </div>
-          <div className="s-row" onClick={() => nav('/settings/edit-profile', { state:{ from:'settings' } })}>
-            <div className="s-icon"><i className="ti ti-file-cv"/></div><div className="s-label">Update CV</div>
-            <span className="s-value">{profile?.cv_path ? 'Uploaded ✓' : 'Not uploaded'}</span>
+          <div className="s-row" onClick={() => document.getElementById('cv-settings-upload').click()}>
+            <div className="s-icon"><i className="ti ti-file-cv"/></div>
+            <div className="s-label">Update CV</div>
+            <span className="s-value">{cvUploading ? 'Uploading...' : profile?.cv_path ? 'Uploaded ✓' : 'Not uploaded'}</span>
             <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
           </div>
+          <input type="file" id="cv-settings-upload" accept=".pdf,.doc,.docx" style={{ display:'none' }} onChange={handleCVUpload}/>
           <div className="s-row" onClick={() => openSheet('email', 'Email address', 'text')}>
             <div className="s-icon"><i className="ti ti-mail"/></div><div className="s-label">Email address</div>
             <span className="s-value" style={{ maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profile?.email || user?.email}</span>

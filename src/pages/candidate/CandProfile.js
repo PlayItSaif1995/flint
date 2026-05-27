@@ -34,8 +34,11 @@ export default function CandProfile() {
 
         {/* Avatar */}
         <div style={{ width:'100%', height:130, background:'var(--bg3)', position:'relative', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-          <div style={{ width:72, height:72, borderRadius:'50%', background:'var(--spark)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, fontWeight:500, color:'#000' }}>
-            {(profile?.full_name || 'U').split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase()}
+          <div style={{ width:72, height:72, borderRadius:'50%', background:'var(--spark)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, fontWeight:500, color:'#000', overflow:'hidden' }}>
+            {profile?.avatar_url
+              ? <img src={profile.avatar_url} alt="avatar" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+              : (profile?.full_name || 'U').split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase()
+            }
           </div>
           <button onClick={() => nav('/settings/edit-profile')} style={{ position:'absolute', bottom:9, right:9, background:'var(--spark)', border:'none', borderRadius:8, padding:'7px 12px', color:'#000', fontSize:11, fontWeight:500, fontFamily:'inherit', cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
             <i className="ti ti-edit"/>Edit profile
