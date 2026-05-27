@@ -13,7 +13,12 @@ export default function Sparks() {
   useEffect(() => { loadMatches() }, [])
 
   async function loadMatches() {
-    const { data } = await supabase.from('matches').select('*, jobs(title, companies(name)), last_message, last_message_at').eq('candidate_id', user.id).order('last_message_at', { ascending:false })
+    const { data } = await supabase
+      .from('matches')
+      .select('*, jobs(title, companies(name)), last_message, last_message_at, candidate_read')
+      .eq('candidate_id', user.id)
+      .neq('status', 'unmatched')
+      .order('last_message_at', { ascending: false, nullsFirst: false })
     setMatches(data || [])
     setLoading(false)
   }
@@ -31,8 +36,7 @@ export default function Sparks() {
           </div>
         )}
         {matches.map(m => (
-          <div key={m.id} className={`notif-item ${!m.candidate_read ? 'unread' : ''}`} onClick={() => nav(`/chat/${m.id}`)}>
-            <div className="notif-av" style={{ background:'#4F46E5', borderRadius:8, fontSize:13 }}>
+          <div key={m.id} className={`notif-item ${!m.candidate_read ? 'unread' : ''}`} onClick={() => { sessionStorage.setItem('chatFromRole', 'candidate'); nav(`/chat/${m.id}`) }}>            <div className="notif-av" style={{ background:'#4F46E5', borderRadius:8, fontSize:13 }}>
               {(m.jobs?.companies?.name || 'CO').substring(0,2).toUpperCase()}
             </div>
             <div className="notif-content">
