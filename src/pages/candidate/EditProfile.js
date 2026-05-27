@@ -29,7 +29,7 @@ export default function EditProfile() {
     await refreshProfile()
     setSaving(false)
     setSaved(true)
-    setTimeout(() => nav('/settings'), 800)
+    setTimeout(() => nav('/profile'), 800)
   }
 
   const F = ({ label, field, type='text', placeholder='' }) => (
@@ -44,7 +44,7 @@ export default function EditProfile() {
     <>
       <div className="status-bar" style={{ background:'var(--bg2)' }}><span>9:41</span><div className="status-icons"><i className="ti ti-wifi"/><i className="ti ti-battery-2"/></div></div>
       <div className="page-header">
-        <button onClick={() => nav('/settings')} style={{ background:'none', border:'none', cursor:'pointer' }}><i className="ti ti-arrow-left" style={{ fontSize:18, color:'var(--t2)' }}/></button>
+        <button onClick={() => nav('/profile')} style={{ background:'none', border:'none', cursor:'pointer' }}><i className="ti ti-arrow-left" style={{ fontSize:18, color:'var(--t2)' }}/></button>
         <h1>Edit profile</h1>
         <button onClick={save} style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, color:'var(--spark)', fontFamily:'inherit', fontWeight:500 }}>{saving ? '...' : saved ? '✓' : 'Save'}</button>
       </div>
