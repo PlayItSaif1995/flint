@@ -22,10 +22,11 @@ export default function Applications() {
 
   const [withdrawing, setWithdrawing] = useState(null)
 
+  useEffect(() => { loadApps() }, [])
+
   async function withdrawApp(app) {
     setWithdrawing(app.id)
     await supabase.from('applications').delete().eq('id', app.id)
-    // Remove from localStorage too
     const applied = JSON.parse(localStorage.getItem(`applied_${user.id}`) || '[]')
     const updated = applied.filter(id => id !== app.jobs?.id)
     localStorage.setItem(`applied_${user.id}`, JSON.stringify(updated))
