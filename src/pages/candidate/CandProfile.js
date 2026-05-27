@@ -15,7 +15,7 @@ export default function CandProfile() {
   async function loadStats() {
     const [{ count: applied }, { count: sparks }] = await Promise.all([
       supabase.from('applications').select('*', { count:'exact', head:true }).eq('candidate_id', user.id),
-      supabase.from('matches').select('*', { count:'exact', head:true }).eq('candidate_id', user.id)
+      supabase.from('matches').select('*', { count:'exact', head:true }).eq('candidate_id', user.id).neq('status', 'unmatched')
     ])
     setStats({ applied: applied || 0, sparks: sparks || 0 })
     setLoading(false)
