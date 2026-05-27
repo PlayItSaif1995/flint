@@ -31,9 +31,11 @@ export default function EmpDashboard() {
   }
 
   async function deleteJob(id) {
-    await supabase.from('jobs').delete().eq('id', id)
-    setJobs(jobs.filter(j => j.id !== id))
+    const { error } = await supabase.from('jobs').delete().eq('id', id)
+    if (error) { console.error('Delete job error:', error); return }
     setShowDel(null)
+    // Reload from DB to confirm deletion
+    await loadJobs()
   }
 
   async function toggleStatus(job) {

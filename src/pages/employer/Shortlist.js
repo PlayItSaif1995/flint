@@ -16,15 +16,23 @@ export default function Shortlist() {
 
   async function loadData() {
     const { data: jobData } = await supabase.from('jobs').select('*, companies(name)').eq('id', jobId).single()
+    
     const { data: apps, error } = await supabase
       .from('applications')
-      .select('id, candidate_id, status, created_at, profiles(full_name, job_title, profession, seniority, current_employer, skills, location_name, bio)')
+      .select('id, candidate_id, status, created_at')
       .eq('job_id', jobId)
       .order('created_at', { ascending: false })
     
     if (error) console.error('Shortlist load error:', error)
+    
+    // Separately fetch candidate profiles
+    const appsWithProfiles = await Promise.all((apps || []).map(async app => {
+      const { data: profile } = await supabase.from('profiles').select('full_name, job_title, profession, seniority, current_employer, skills, location_name, bio').eq('id', app.candidate_id).maybeSingle()
+      return { ...app, profiles: profile }
+    }))
+    
     setJob(jobData)
-    setApplicants(apps || [])
+    setApplicants(appsWithProfiles)
     setLoading(false)
   }
 
