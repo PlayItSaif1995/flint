@@ -46,7 +46,7 @@ export default function EmpSparks() {
           const cand = m.cand_profile
           const initials = (cand?.full_name || 'C').split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase()
           return (
-            <div key={m.id} className={`notif-item ${!m.employer_read ? 'unread' : ''}`} onClick={() => nav(`/chat/${m.id}`)}>
+            <div key={m.id} className={`notif-item ${!m.employer_read ? 'unread' : ''}`} onClick={() => { sessionStorage.setItem('chatFromRole', 'employer'); nav(`/chat/${m.id}`) }}>
               <div className="notif-av" style={{ background: COLORS[i % COLORS.length], borderRadius:10, fontSize:14, fontWeight:500 }}>
                 {initials}
               </div>
