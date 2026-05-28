@@ -104,10 +104,10 @@ export default function CandSettings() {
     <>
       <div className="status-bar" style={{ background:'var(--bg2)' }}><span>9:41</span><div className="status-icons"><i className="ti ti-wifi"/><i className="ti ti-battery-2"/></div></div>
       <div className="page-header">
+        <h1>Profile</h1>
         <button onClick={() => nav('/profile')} style={{ background:'none', border:'none', cursor:'pointer' }}>
-          <i className="ti ti-arrow-left" style={{ fontSize:18, color:'var(--t2)' }}/>
+          <i className="ti ti-chart-bar" style={{ fontSize:18, color:'var(--t2)' }}/>
         </button>
-        <h1>Settings</h1>
       </div>
 
       <div className="scroll" style={{ background:'var(--bg)' }}>

@@ -25,10 +25,10 @@ export default function CandProfile() {
     <>
       <div className="status-bar" style={{ background:'var(--bg2)' }}><span>9:41</span><div className="status-icons"><i className="ti ti-wifi"/><i className="ti ti-battery-2"/></div></div>
       <div className="page-header">
-        <h1>My profile</h1>
         <button onClick={() => nav('/settings')} style={{ background:'none', border:'none', cursor:'pointer' }}>
-          <i className="ti ti-settings" style={{ fontSize:18, color:'var(--t2)' }}/>
+          <i className="ti ti-arrow-left" style={{ fontSize:18, color:'var(--t2)' }}/>
         </button>
+        <h1>My stats</h1>
       </div>
       <div className="scroll" style={{ background:'var(--bg)' }}>
 
@@ -40,8 +40,8 @@ export default function CandProfile() {
               : (profile?.full_name || 'U').split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase()
             }
           </div>
-          <button onClick={() => nav('/settings/edit-profile')} style={{ position:'absolute', bottom:9, right:9, background:'var(--spark)', border:'none', borderRadius:8, padding:'7px 12px', color:'#000', fontSize:11, fontWeight:500, fontFamily:'inherit', cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
-            <i className="ti ti-edit"/>Edit profile
+          <button onClick={() => nav('/settings')} style={{ position:'absolute', bottom:9, right:9, background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:8, padding:'7px 12px', color:'var(--t2)', fontSize:11, fontWeight:500, fontFamily:'inherit', cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
+            <i className="ti ti-camera"/>Edit photo
           </button>
         </div>
 
