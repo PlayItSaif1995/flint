@@ -13,6 +13,7 @@ export default function CandSettings() {
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || null)
   const [cvFilename, setCvFilename] = useState(profile?.cv_filename || null)
+  const [cvPath, setCvPath] = useState(profile?.cv_path || null)
   const [sheet, setSheet] = useState(null)
   const [currentPassword, setCurrentPassword] = useState('')
   const [sheetError, setSheetError] = useState('')
@@ -27,7 +28,8 @@ export default function CandSettings() {
     const { error } = await supabase.storage.from('cvs').upload(path, file, { upsert: true })
     if (!error) {
       await supabase.from('profiles').update({ cv_path: path, cv_filename: file.name }).eq('id', user.id)
-      setCvFilename(file.name) // Update immediately
+      setCvFilename(file.name)
+      setCvPath(path)
       await refreshProfile()
     } else {
       console.error('CV upload error:', error)
@@ -180,7 +182,7 @@ export default function CandSettings() {
             <div className="s-icon sp"><i className="ti ti-user"/></div><div className="s-label">Edit full profile</div><i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
           </div>
           <input type="file" id="cv-settings-upload" accept=".pdf,.doc,.docx" style={{ display:'none' }} onChange={handleCVUpload}/>
-          {profile?.cv_path || cvFilename ? (
+          {cvPath || profile?.cv_path ? (
             <div style={{ display:'flex', alignItems:'center', gap:0, borderBottom:'0.5px solid var(--border)' }}>
               <div className="s-row" style={{ flex:1, borderBottom:'none' }} onClick={() => document.getElementById('cv-settings-upload').click()}>
                 <div className="s-icon gr"><i className="ti ti-file-cv"/></div>
@@ -191,7 +193,8 @@ export default function CandSettings() {
                 <span className="s-value" style={{ color:'var(--green)' }}>✓</span>
               </div>
               <button onClick={async () => {
-                const { data } = supabase.storage.from('cvs').getPublicUrl(profile.cv_path)
+                const activePath = cvPath || profile?.cv_path
+                const { data } = supabase.storage.from('cvs').getPublicUrl(activePath)
                 window.open(data.publicUrl, '_blank')
               }} style={{ background:'none', border:'none', padding:'0 14px', cursor:'pointer', flexShrink:0 }}>
                 <i className="ti ti-eye" style={{ fontSize:16, color:'var(--spark)' }}/>
