@@ -22,8 +22,11 @@ export default function CandSettings() {
     const path = `${user.id}/cv.${ext}`
     const { error } = await supabase.storage.from('cvs').upload(path, file, { upsert: true })
     if (!error) {
-      await supabase.from('profiles').update({ cv_path: path }).eq('id', user.id)
+      await supabase.from('profiles').update({ cv_path: path, cv_filename: file.name }).eq('id', user.id)
       await refreshProfile()
+    } else {
+      console.error('CV upload error:', error)
+      alert('Upload failed. Please try again.')
     }
     setCvUploading(false)
   }
@@ -35,12 +38,20 @@ export default function CandSettings() {
     setAvatarUploading(true)
     const ext = file.name.split('.').pop()
     const path = `${user.id}/avatar.${ext}`
-    const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
-    if (!error) {
-      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
-      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
-      await refreshProfile()
+    
+    const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type })
+    if (error) {
+      console.error('Avatar upload error:', error)
+      setAvatarUploading(false)
+      return
     }
+    
+    // Get public URL
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+    const publicUrl = data.publicUrl + '?t=' + Date.now() // cache bust
+    
+    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
+    await refreshProfile()
     setAvatarUploading(false)
   } // { field, label, type, options, value }
   const [sheetValue, setSheetValue] = useState('')
@@ -161,13 +172,32 @@ export default function CandSettings() {
           <div className="s-row" onClick={() => nav('/settings/edit-profile', { state:{ from:'settings' } })}>
             <div className="s-icon sp"><i className="ti ti-user"/></div><div className="s-label">Edit full profile</div><i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
           </div>
-          <div className="s-row" onClick={() => document.getElementById('cv-settings-upload').click()}>
-            <div className="s-icon"><i className="ti ti-file-cv"/></div>
-            <div className="s-label">Update CV</div>
-            <span className="s-value">{cvUploading ? 'Uploading...' : profile?.cv_path ? 'Uploaded ✓' : 'Not uploaded'}</span>
-            <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
-          </div>
           <input type="file" id="cv-settings-upload" accept=".pdf,.doc,.docx" style={{ display:'none' }} onChange={handleCVUpload}/>
+          {profile?.cv_path ? (
+            <div style={{ display:'flex', alignItems:'center', gap:0, borderBottom:'0.5px solid var(--border)' }}>
+              <div className="s-row" style={{ flex:1, borderBottom:'none' }} onClick={() => document.getElementById('cv-settings-upload').click()}>
+                <div className="s-icon gr"><i className="ti ti-file-cv"/></div>
+                <div style={{ flex:1 }}>
+                  <div className="s-label">CV uploaded</div>
+                  <div style={{ fontSize:10, color:'var(--t3)', marginTop:1 }}>{profile?.cv_filename || 'Tap to replace'}</div>
+                </div>
+                <span className="s-value" style={{ color:'var(--green)' }}>✓</span>
+              </div>
+              <button onClick={async () => {
+                const { data } = supabase.storage.from('cvs').getPublicUrl(profile.cv_path)
+                window.open(data.publicUrl, '_blank')
+              }} style={{ background:'none', border:'none', padding:'0 14px', cursor:'pointer', flexShrink:0 }}>
+                <i className="ti ti-eye" style={{ fontSize:16, color:'var(--spark)' }}/>
+              </button>
+            </div>
+          ) : (
+            <div className="s-row" onClick={() => document.getElementById('cv-settings-upload').click()}>
+              <div className="s-icon"><i className="ti ti-file-cv"/></div>
+              <div className="s-label">Upload CV</div>
+              <span className="s-value" style={{ color: cvUploading ? 'var(--spark)' : 'var(--t3)' }}>{cvUploading ? 'Uploading...' : 'Not uploaded'}</span>
+              <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
+            </div>
+          )}
           <div className="s-row" onClick={() => openSheet('email', 'Email address', 'text')}>
             <div className="s-icon"><i className="ti ti-mail"/></div><div className="s-label">Email address</div>
             <span className="s-value" style={{ maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profile?.email || user?.email}</span>
