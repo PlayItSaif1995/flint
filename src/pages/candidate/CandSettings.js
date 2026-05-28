@@ -12,7 +12,10 @@ export default function CandSettings() {
   const [cvUploading, setCvUploading] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || null)
+  const [cvFilename, setCvFilename] = useState(profile?.cv_filename || null)
   const [sheet, setSheet] = useState(null)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [sheetError, setSheetError] = useState('')
 
   async function handleCVUpload(e) {
     const file = e.target.files[0]
@@ -24,6 +27,7 @@ export default function CandSettings() {
     const { error } = await supabase.storage.from('cvs').upload(path, file, { upsert: true })
     if (!error) {
       await supabase.from('profiles').update({ cv_path: path, cv_filename: file.name }).eq('id', user.id)
+      setCvFilename(file.name) // Update immediately
       await refreshProfile()
     } else {
       console.error('CV upload error:', error)
@@ -52,8 +56,9 @@ export default function CandSettings() {
     const publicUrl = data.publicUrl + '?t=' + Date.now()
     
     await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
-    setAvatarUrl(publicUrl) // Update immediately without waiting for refreshProfile
-    await refreshProfile()
+    setAvatarUrl(publicUrl)
+    // Force full reload so profile context re-fetches with new avatar
+    setTimeout(() => window.location.reload(), 500)
     setAvatarUploading(false)
   } // { field, label, type, options, value }
   const [sheetValue, setSheetValue] = useState('')
@@ -175,13 +180,13 @@ export default function CandSettings() {
             <div className="s-icon sp"><i className="ti ti-user"/></div><div className="s-label">Edit full profile</div><i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
           </div>
           <input type="file" id="cv-settings-upload" accept=".pdf,.doc,.docx" style={{ display:'none' }} onChange={handleCVUpload}/>
-          {profile?.cv_path ? (
+          {profile?.cv_path || cvFilename ? (
             <div style={{ display:'flex', alignItems:'center', gap:0, borderBottom:'0.5px solid var(--border)' }}>
               <div className="s-row" style={{ flex:1, borderBottom:'none' }} onClick={() => document.getElementById('cv-settings-upload').click()}>
                 <div className="s-icon gr"><i className="ti ti-file-cv"/></div>
                 <div style={{ flex:1 }}>
                   <div className="s-label">CV uploaded</div>
-                  <div style={{ fontSize:10, color:'var(--t3)', marginTop:1 }}>{profile?.cv_filename || 'Tap to replace'}</div>
+                  <div style={{ fontSize:10, color:'var(--t3)', marginTop:1 }}>{cvFilename || profile?.cv_filename || 'Tap to replace'}</div>
                 </div>
                 <span className="s-value" style={{ color:'var(--green)' }}>✓</span>
               </div>
@@ -278,10 +283,22 @@ export default function CandSettings() {
 
       {/* Quick edit bottom sheet */}
       {sheet && (
-        <div className="modal-overlay" onClick={() => setSheet(null)}>
+        <div className="modal-overlay" onClick={() => { setSheet(null); setCurrentPassword(''); setSheetError('') }}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="modal-title">{sheet.label}</div>
-            <div style={{ marginBottom:14 }}>
+
+            {/* Sensitive fields require current password first */}
+            {(sheet.field === 'password' || sheet.field === 'email') && (
+              <div style={{ marginBottom:10 }}>
+                <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', marginBottom:5 }}>CURRENT PASSWORD</div>
+                <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)}
+                  placeholder="Enter your current password to confirm"
+                  style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'13px 14px', color:'#fff', fontSize:14, fontFamily:'inherit', outline:'none', marginBottom:10 }}/>
+                <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', marginBottom:5 }}>{sheet.field === 'password' ? 'NEW PASSWORD' : 'NEW EMAIL'}</div>
+              </div>
+            )}
+
+            <div style={{ marginBottom:10 }}>
               {sheet.type === 'select' ? (
                 <select value={sheetValue} onChange={e => setSheetValue(e.target.value)}
                   style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'13px 14px', color:'#fff', fontSize:14, fontFamily:'inherit', outline:'none', cursor:'pointer' }}>
@@ -292,22 +309,49 @@ export default function CandSettings() {
                   placeholder="New password (min 8 characters)"
                   style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'13px 14px', color:'#fff', fontSize:14, fontFamily:'inherit', outline:'none' }}/>
               ) : (
-                <input type="text" value={sheetValue} onChange={e => setSheetValue(e.target.value)}
+                <input type={sheet.field === 'email' ? 'email' : 'text'} value={sheetValue} onChange={e => setSheetValue(e.target.value)}
                   placeholder={sheet.label}
                   style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'13px 14px', color:'#fff', fontSize:14, fontFamily:'inherit', outline:'none' }}/>
               )}
             </div>
+
+            {sheetError && <p style={{ fontSize:12, color:'var(--red)', marginBottom:10 }}>{sheetError}</p>}
+
             <div style={{ display:'flex', gap:8 }}>
-              <button className="btn-secondary" style={{ flex:1 }} onClick={() => setSheet(null)}>Cancel</button>
+              <button className="btn-secondary" style={{ flex:1 }} onClick={() => { setSheet(null); setCurrentPassword(''); setSheetError('') }}>Cancel</button>
               <button className="btn-primary" style={{ flex:2, marginBottom:0 }} onClick={async () => {
-                setSaving(true)
+                setSheetError('')
                 if (sheet.field === 'password') {
-                  if (sheetValue.length < 8) { setSaving(false); return }
-                  await supabase.auth.updateUser({ password: sheetValue })
-                } else {
-                  await supabase.from('profiles').update({ [sheet.field]: sheetValue }).eq('id', user.id)
-                  await refreshProfile()
+                  if (!currentPassword) { setSheetError('Enter your current password first'); return }
+                  if (sheetValue.length < 8) { setSheetError('New password must be at least 8 characters'); return }
+                  setSaving(true)
+                  const { error: authErr } = await supabase.auth.signInWithPassword({ email: profile?.email || user?.email, password: currentPassword })
+                  if (authErr) { setSheetError('Current password is incorrect'); setSaving(false); return }
+                  const { error } = await supabase.auth.updateUser({ password: sheetValue })
+                  setSaving(false)
+                  if (error) setSheetError(error.message)
+                  else { setSheet(null); setCurrentPassword('') }
+                  return
                 }
+                if (sheet.field === 'email') {
+                  if (!currentPassword) { setSheetError('Enter your current password first'); return }
+                  if (!sheetValue.includes('@')) { setSheetError('Enter a valid email address'); return }
+                  setSaving(true)
+                  const { error: authErr } = await supabase.auth.signInWithPassword({ email: profile?.email || user?.email, password: currentPassword })
+                  if (authErr) { setSheetError('Current password is incorrect'); setSaving(false); return }
+                  const { error } = await supabase.auth.updateUser({ email: sheetValue })
+                  setSaving(false)
+                  if (error) setSheetError(error.message)
+                  else {
+                    await supabase.from('profiles').update({ email: sheetValue }).eq('id', user.id)
+                    setSheet(null); setCurrentPassword('')
+                  }
+                  return
+                }
+                // Non-sensitive — just save directly
+                setSaving(true)
+                await supabase.from('profiles').update({ [sheet.field]: sheetValue }).eq('id', user.id)
+                await refreshProfile()
                 setSaving(false)
                 setSheet(null)
               }} disabled={saving}>
