@@ -24,7 +24,7 @@ export default function CandSettings() {
     if (file.size > 5 * 1024 * 1024) { alert('File must be under 5MB'); return }
     setCvUploading(true)
     const ext = file.name.split('.').pop()
-    const path = `${user.id}/cv.${ext}`
+    const path = `${user.id}/cv_${Date.now()}.${ext}`
     const { error } = await supabase.storage.from('cvs').upload(path, file, { upsert: true })
     if (!error) {
       await supabase.from('profiles').update({ cv_path: path, cv_filename: file.name }).eq('id', user.id)
@@ -195,7 +195,7 @@ export default function CandSettings() {
               <button onClick={async () => {
                 const activePath = cvPath || profile?.cv_path
                 const { data } = supabase.storage.from('cvs').getPublicUrl(activePath)
-                window.open(data.publicUrl, '_blank')
+                window.open(data.publicUrl + '?t=' + Date.now(), '_blank')
               }} style={{ background:'none', border:'none', padding:'0 14px', cursor:'pointer', flexShrink:0 }}>
                 <i className="ti ti-eye" style={{ fontSize:16, color:'var(--spark)' }}/>
               </button>
