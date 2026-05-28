@@ -11,6 +11,7 @@ export default function CandSettings() {
   const [deleting, setDeleting] = useState(false)
   const [cvUploading, setCvUploading] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || null)
   const [sheet, setSheet] = useState(null)
 
   async function handleCVUpload(e) {
@@ -48,9 +49,10 @@ export default function CandSettings() {
     
     // Get public URL
     const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-    const publicUrl = data.publicUrl + '?t=' + Date.now() // cache bust
+    const publicUrl = data.publicUrl + '?t=' + Date.now()
     
     await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
+    setAvatarUrl(publicUrl) // Update immediately without waiting for refreshProfile
     await refreshProfile()
     setAvatarUploading(false)
   } // { field, label, type, options, value }
@@ -113,8 +115,8 @@ export default function CandSettings() {
         <div style={{ padding:16, display:'flex', flexDirection:'column', alignItems:'center', gap:5, borderBottom:'0.5px solid var(--border)', background:'var(--bg2)' }}>
           <input type="file" id="avatar-upload" accept="image/jpeg,image/png,image/webp" style={{ display:'none' }} onChange={handleAvatarUpload}/>
           <div onClick={() => document.getElementById('avatar-upload').click()} style={{ width:68, height:68, borderRadius:'50%', background:'var(--spark)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:21, fontWeight:500, color:'#000', cursor:'pointer', position:'relative', overflow:'hidden' }}>
-            {profile?.avatar_url
-              ? <img src={profile.avatar_url} alt="avatar" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+            {avatarUrl
+              ? <img src={avatarUrl} alt="avatar" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
               : (profile?.full_name || 'U').split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase()
             }
             {avatarUploading && (
