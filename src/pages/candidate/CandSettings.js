@@ -3,6 +3,28 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
 
+const COUNTRY_CITIES = {
+  'United Kingdom': ['London','Manchester','Birmingham','Leeds','Edinburgh','Glasgow','Bristol','Liverpool','Sheffield','Newcastle','Cardiff','Belfast','Oxford','Cambridge','Nottingham','Leicester','Coventry','Bradford','Stoke-on-Trent','Reading'],
+  'United States': ['New York','Los Angeles','Chicago','Houston','Phoenix','Philadelphia','San Antonio','San Diego','Dallas','San Francisco','Seattle','Denver','Boston','Atlanta','Miami','Portland','Las Vegas','Minneapolis','Detroit','Baltimore'],
+  'Canada': ['Toronto','Vancouver','Montreal','Calgary','Ottawa','Edmonton','Quebec City','Winnipeg','Halifax','Victoria'],
+  'Australia': ['Sydney','Melbourne','Brisbane','Perth','Adelaide','Gold Coast','Newcastle','Canberra','Hobart','Darwin'],
+  'United Arab Emirates': ['Dubai','Abu Dhabi','Sharjah','Ajman','Ras Al Khaimah','Fujairah'],
+  'Ireland': ['Dublin','Cork','Galway','Limerick','Waterford','Kilkenny'],
+  'Germany': ['Berlin','Munich','Hamburg','Frankfurt','Cologne','Stuttgart','Düsseldorf','Leipzig','Dortmund','Essen'],
+  'France': ['Paris','Lyon','Marseille','Toulouse','Nice','Nantes','Strasbourg','Montpellier','Bordeaux','Lille'],
+  'Netherlands': ['Amsterdam','Rotterdam','The Hague','Utrecht','Eindhoven','Groningen','Tilburg'],
+  'Spain': ['Madrid','Barcelona','Valencia','Seville','Zaragoza','Málaga','Bilbao'],
+  'Italy': ['Rome','Milan','Naples','Turin','Florence','Bologna','Venice'],
+  'Singapore': ['Singapore'],
+  'Qatar': ['Doha','Al Wakrah','Al Khor','Lusail'],
+  'Saudi Arabia': ['Riyadh','Jeddah','Mecca','Medina','Dammam','Khobar'],
+  'South Africa': ['Johannesburg','Cape Town','Durban','Pretoria','Port Elizabeth'],
+  'India': ['Mumbai','Delhi','Bangalore','Hyderabad','Chennai','Kolkata','Pune','Ahmedabad'],
+  'Pakistan': ['Karachi','Lahore','Islamabad','Rawalpindi','Faisalabad','Peshawar'],
+  'New Zealand': ['Auckland','Wellington','Christchurch','Hamilton','Dunedin'],
+  'Other': ['Other'],
+}
+
 export default function CandSettings() {
   const nav = useNavigate()
   const { profile, signOut, user, refreshProfile } = useAuth()
@@ -18,6 +40,8 @@ export default function CandSettings() {
   const [currentPassword, setCurrentPassword] = useState('')
   const [sheetError, setSheetError] = useState('')
   const [confirmValue, setConfirmValue] = useState('')
+  const [locationCountry, setLocationCountry] = useState('')
+  const [locationCity, setLocationCity] = useState('')
 
   async function handleCVUpload(e) {
     const file = e.target.files[0]
@@ -44,25 +68,37 @@ export default function CandSettings() {
     if (!file) return
     if (file.size > 3 * 1024 * 1024) { alert('Image must be under 3MB'); return }
     setAvatarUploading(true)
-    const ext = file.name.split('.').pop()
-    const path = `${user.id}/avatar.${ext}`
+    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
+    const path = `${user.id}/avatar_${Date.now()}.${ext}`
     
-    const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type })
+    const { data: uploadData, error } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true, contentType: file.type })
+    
     if (error) {
       console.error('Avatar upload error:', error)
+      alert('Upload failed: ' + error.message)
       setAvatarUploading(false)
       return
     }
+
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+    const publicUrl = urlData.publicUrl
     
-    // Get public URL
-    const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-    const publicUrl = data.publicUrl + '?t=' + Date.now()
+    console.log('Avatar URL:', publicUrl)
     
-    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
+    const { error: updateError } = await supabase.from('profiles')
+      .update({ avatar_url: publicUrl })
+      .eq('id', user.id)
+    
+    if (updateError) {
+      console.error('Profile update error:', updateError)
+    }
+    
     setAvatarUrl(publicUrl)
-    // Force full reload so profile context re-fetches with new avatar
-    setTimeout(() => window.location.reload(), 500)
     setAvatarUploading(false)
+    // Reload to persist across pages
+    setTimeout(() => window.location.reload(), 300)
   } // { field, label, type, options, value }
   const [sheetValue, setSheetValue] = useState('')
   const [saving, setSaving] = useState(false)
@@ -363,12 +399,30 @@ export default function CandSettings() {
                     {sheet.options.map(o => <option key={o}>{o}</option>)}
                   </select>
                 ) : sheet.field === 'location_name' ? (
-                  <div>
-                    <input type="text" value={sheetValue} onChange={e => setSheetValue(e.target.value)} placeholder="e.g. London, UK"
-                      style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'13px 14px', color:'#fff', fontSize:14, fontFamily:'inherit', outline:'none', marginBottom:8 }}/>
-                    <button onClick={detectLocation} style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border2)', borderRadius:10, padding:'11px 14px', color:'var(--spark)', fontSize:13, fontFamily:'inherit', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
+                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                    <div style={{ background: sheetValue ? 'var(--gd)' : 'var(--bg3)', border:`0.5px solid ${sheetValue ? 'var(--gb)' : 'var(--border)'}`, borderRadius:10, padding:'13px 14px', display:'flex', alignItems:'center', gap:10 }}>
+                      <i className={`ti ${sheetValue ? 'ti-map-pin-check' : 'ti-map-pin'}`} style={{ fontSize:18, color: sheetValue ? 'var(--green)' : 'var(--t3)', flexShrink:0 }}/>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:13, color: sheetValue ? '#fff' : 'var(--t3)', fontWeight: sheetValue ? 500 : 400 }}>{sheetValue || 'No location set'}</div>
+                        {sheetValue && <div style={{ fontSize:10, color:'var(--green)' }}>Location set</div>}
+                      </div>
+                    </div>
+                    <button onClick={detectLocation} style={{ width:'100%', background:'var(--spark)', border:'none', borderRadius:10, padding:'12px 14px', color:'#000', fontSize:13, fontWeight:600, fontFamily:'inherit', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
                       <i className="ti ti-map-pin" style={{ fontSize:15 }}/> Use my current location
                     </button>
+                    <div style={{ fontSize:10, color:'var(--t3)', textAlign:'center' }}>— or select manually —</div>
+                    <select value={locationCountry} onChange={e => { setLocationCountry(e.target.value); setLocationCity('') }}
+                      style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'12px 14px', color: locationCountry ? '#fff' : 'var(--t3)', fontSize:13, fontFamily:'inherit', outline:'none', cursor:'pointer' }}>
+                      <option value="">Select country</option>
+                      {Object.keys(COUNTRY_CITIES).map(c => <option key={c}>{c}</option>)}
+                    </select>
+                    {locationCountry && (
+                      <select value={locationCity} onChange={e => { setLocationCity(e.target.value); setSheetValue(`${e.target.value}, ${locationCountry}`) }}
+                        style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'12px 14px', color: locationCity ? '#fff' : 'var(--t3)', fontSize:13, fontFamily:'inherit', outline:'none', cursor:'pointer' }}>
+                        <option value="">Select city</option>
+                        {COUNTRY_CITIES[locationCountry].map(c => <option key={c}>{c}</option>)}
+                      </select>
+                    )}
                   </div>
                 ) : (
                   <input type="text" value={sheetValue} onChange={e => setSheetValue(e.target.value)} placeholder={sheet.label}
