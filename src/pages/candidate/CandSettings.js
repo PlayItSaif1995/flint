@@ -159,6 +159,10 @@ export default function CandSettings() {
   async function toggleNotif(key) {
     const updated = { ...notifs, [key]: !notifs[key] }
     setNotifs(updated)
+    if (key === 'open_to_work') {
+      // Save directly to profiles column so headhunt can filter on it
+      await supabase.from('profiles').update({ open_to_work: updated[key] }).eq('id', user.id)
+    }
     await supabase.from('profiles').update({ notification_prefs: JSON.stringify(updated) }).eq('id', user.id)
   }
 
