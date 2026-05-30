@@ -26,7 +26,13 @@ export default function Headhunt() {
   useEffect(() => { loadCandidates() }, [])
 
   async function loadCandidates() {
-    const { data } = await supabase.from('profiles').select('*').eq('role', 'candidate').eq('onboarded', true).limit(50)
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'candidate')
+      .eq('onboarded', true)
+      .neq('open_to_work', false)
+      .limit(50)
     setCandidates(data || [])
     const { data: existing } = await supabase.from('matches').select('candidate_id').eq('employer_id', user.id).eq('headhunt', true)
     setSparkedIds((existing || []).map(m => m.candidate_id))
