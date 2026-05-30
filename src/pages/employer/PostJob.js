@@ -66,6 +66,16 @@ export default function PostJob() {
       return
     }
 
+    // Geocode the job location so distance filtering works
+    let jobLat = null, jobLon = null
+    if (location.trim() && workStyle !== 'Remote') {
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location.trim())}&format=json&limit=1`)
+        const d = await r.json()
+        if (d[0]) { jobLat = parseFloat(d[0].lat); jobLon = parseFloat(d[0].lon) }
+      } catch {}
+    }
+
     const { error } = await supabase.from('jobs').insert({
       title: title.trim(),
       salary_min: parseInt(salaryMin.replace(/[^0-9]/g,'')) || null,
@@ -73,6 +83,8 @@ export default function PostJob() {
       job_type: jobType,
       work_style: workStyle,
       location: location.trim(),
+      lat: jobLat,
+      lon: jobLon,
       availability,
       contract,
       seniority_level: seniority,
