@@ -234,35 +234,54 @@ export default function CandSettings() {
           )}
         </div>
 
-        {/* Account */}
+        {/* Profile */}
         <div style={{ padding:'3px 0' }}>
           <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', padding:'8px 15px 3px' }}>PROFILE</div>
-          <div className="s-row" onClick={() => nav('/settings/edit-profile', { state:{ from:'settings' } })}>
-            <div className="s-icon sp"><i className="ti ti-user"/></div><div className="s-label">Full name</div>
+          <div className="s-row" onClick={() => openSheet('full_name', 'Full name', 'text')}>
+            <div className="s-icon sp"><i className="ti ti-user"/></div>
+            <div className="s-label">Full name</div>
             <span className="s-value">{profile?.full_name || 'Not set'}</span>
             <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
           </div>
-          <div className="s-row" onClick={() => nav('/settings/edit-profile', { state:{ from:'settings' } })}>
-            <div className="s-icon"><i className="ti ti-briefcase"/></div><div className="s-label">Job title & experience</div>
+          <div className="s-row" onClick={() => openSheet('job_title', 'Job title', 'text')}>
+            <div className="s-icon"><i className="ti ti-briefcase"/></div>
+            <div className="s-label">Job title</div>
             <span className="s-value">{profile?.job_title || 'Not set'}</span>
             <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
           </div>
-          <div className="s-row" onClick={() => nav('/settings/edit-profile', { state:{ from:'settings' } })}>
-            <div className="s-icon"><i className="ti ti-file-text"/></div><div className="s-label">Bio & skills</div>
+          <div className="s-row" onClick={() => openSheet('current_employer', 'Current employer', 'text')}>
+            <div className="s-icon"><i className="ti ti-building"/></div>
+            <div className="s-label">Current employer</div>
+            <span className="s-value">{profile?.current_employer || 'Not set'}</span>
             <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
           </div>
-        </div>
+          <div className="s-row" onClick={() => openSheet('qualification', 'Qualification', 'select', ['GCSE / O-Level','A-Levels / IB','HNC / HND','Foundation Degree',"Bachelor's Degree","Master's Degree",'PhD / Doctorate','Professional Qualification (e.g. RICS, ACA)','Apprenticeship','Other'])}>
+            <div className="s-icon"><i className="ti ti-school"/></div>
+            <div className="s-label">Qualification</div>
+            <span className="s-value">{profile?.qualification || 'Not set'}</span>
+            <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
+          </div>
+          <div className="s-row" onClick={() => openSheet('skills', 'Skills', 'text')}>
+            <div className="s-icon"><i className="ti ti-tools"/></div>
+            <div className="s-label">Skills</div>
+            <span className="s-value" style={{ maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profile?.skills || 'Not set'}</span>
+            <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
+          </div>
+          <div className="s-row" onClick={() => openSheet('bio', 'Bio', 'textarea')}>
+            <div className="s-icon"><i className="ti ti-notes"/></div>
+            <div className="s-label">Bio</div>
+            <span className="s-value" style={{ maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profile?.bio || 'Not set'}</span>
+            <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
+          </div>
 
-        {/* Account */}
-        <div style={{ padding:'3px 0' }}>
-          <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', padding:'8px 15px 3px' }}>ACCOUNT</div>
+          {/* CV inline in profile section */}
           <input type="file" id="cv-settings-upload" accept=".pdf,.doc,.docx" style={{ display:'none' }} onChange={handleCVUpload}/>
           {cvPath || profile?.cv_path ? (
-            <div style={{ display:'flex', alignItems:'center', gap:0, borderBottom:'0.5px solid var(--border)' }}>
+            <div style={{ display:'flex', alignItems:'center', borderBottom:'0.5px solid var(--border)' }}>
               <div className="s-row" style={{ flex:1, borderBottom:'none' }} onClick={() => document.getElementById('cv-settings-upload').click()}>
                 <div className="s-icon gr"><i className="ti ti-file-cv"/></div>
                 <div style={{ flex:1 }}>
-                  <div className="s-label">CV uploaded</div>
+                  <div className="s-label">CV</div>
                   <div style={{ fontSize:10, color:'var(--t3)', marginTop:1 }}>{cvFilename || profile?.cv_filename || 'Tap to replace'}</div>
                 </div>
                 <span className="s-value" style={{ color:'var(--green)' }}>✓</span>
@@ -278,11 +297,16 @@ export default function CandSettings() {
           ) : (
             <div className="s-row" onClick={() => document.getElementById('cv-settings-upload').click()}>
               <div className="s-icon"><i className="ti ti-file-cv"/></div>
-              <div className="s-label">Upload CV</div>
+              <div className="s-label">CV</div>
               <span className="s-value" style={{ color: cvUploading ? 'var(--spark)' : 'var(--t3)' }}>{cvUploading ? 'Uploading...' : 'Not uploaded'}</span>
               <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
             </div>
           )}
+        </div>
+
+        {/* Account */}
+        <div style={{ padding:'3px 0' }}>
+          <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', padding:'8px 15px 3px' }}>ACCOUNT</div>
           <div className="s-row" onClick={() => openSheet('email', 'Email address', 'text')}>
             <div className="s-icon"><i className="ti ti-mail"/></div><div className="s-label">Email address</div>
             <span className="s-value" style={{ maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profile?.email || user?.email}</span>
@@ -443,6 +467,12 @@ export default function CandSettings() {
                         {cities.map(c => <option key={c}>{c}</option>)}
                       </select>
                     )}
+                  </div>
+                ) : sheet.type === 'textarea' ? (
+                  <div>
+                    <textarea value={sheetValue} onChange={e => setSheetValue(e.target.value)} placeholder={sheet.label} maxLength={200}
+                      style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'13px 14px', color:'#fff', fontSize:14, fontFamily:'inherit', outline:'none', resize:'none', height:100 }}/>
+                    <div style={{ fontSize:10, color:'var(--t3)', textAlign:'right', marginTop:3 }}>{sheetValue.length}/200</div>
                   </div>
                 ) : (
                   <input type="text" value={sheetValue} onChange={e => setSheetValue(e.target.value)} placeholder={sheet.label}
