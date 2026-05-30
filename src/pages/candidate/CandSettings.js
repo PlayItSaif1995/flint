@@ -271,6 +271,18 @@ export default function CandSettings() {
             <span className="s-value" style={{ maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profile?.skills || 'Not set'}</span>
             <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
           </div>
+          <div className="s-row" onClick={() => openSheet('years_experience', 'Years of experience', 'select', ['No experience','Less than 1 year','1–2 years','3–5 years','6–9 years','10–15 years','15+ years'])}>
+            <div className="s-icon"><i className="ti ti-clock"/></div>
+            <div className="s-label">Years of experience</div>
+            <span className="s-value">{profile?.years_experience || 'Not set'}</span>
+            <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
+          </div>
+          <div className="s-row" onClick={() => openSheet('languages', 'Languages', 'multiselect', ['English','Arabic','French','Spanish','German','Mandarin','Hindi','Urdu','Portuguese','Italian','Dutch','Russian','Japanese','Korean','Turkish','Polish','Swedish','Norwegian','Danish','Finnish','Greek','Hebrew','Bengali','Punjabi','Swahili','Other'])}>
+            <div className="s-icon"><i className="ti ti-language"/></div>
+            <div className="s-label">Languages</div>
+            <span className="s-value" style={{ maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profile?.languages || 'Not set'}</span>
+            <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
+          </div>
           <div className="s-row" onClick={() => openSheet('bio', 'Bio', 'textarea')}>
             <div className="s-icon"><i className="ti ti-notes"/></div>
             <div className="s-label">Bio</div>
@@ -477,6 +489,24 @@ export default function CandSettings() {
                     <textarea value={sheetValue} onChange={e => setSheetValue(e.target.value)} placeholder={sheet.label} maxLength={200}
                       style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'13px 14px', color:'#fff', fontSize:14, fontFamily:'inherit', outline:'none', resize:'none', height:100 }}/>
                     <div style={{ fontSize:10, color:'var(--t3)', textAlign:'right', marginTop:3 }}>{sheetValue.length}/200</div>
+                  </div>
+                ) : sheet.type === 'multiselect' ? (
+                  <div style={{ maxHeight:220, overflowY:'auto' }}>
+                    {sheet.options.map(opt => {
+                      const selected = sheetValue.split(',').map(s=>s.trim()).filter(Boolean).includes(opt)
+                      return (
+                        <div key={opt} onClick={() => {
+                          const current = sheetValue.split(',').map(s=>s.trim()).filter(Boolean)
+                          const updated = selected ? current.filter(s=>s!==opt) : [...current, opt]
+                          setSheetValue(updated.join(', '))
+                        }} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 4px', cursor:'pointer', borderBottom:'0.5px solid var(--border)' }}>
+                          <div style={{ width:20, height:20, borderRadius:6, border:`1.5px solid ${selected ? 'var(--spark)' : 'var(--border2)'}`, background: selected ? 'var(--spark)' : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            {selected && <i className="ti ti-check" style={{ fontSize:11, color:'#000' }}/>}
+                          </div>
+                          <span style={{ fontSize:13, color: selected ? '#fff' : 'var(--t2)' }}>{opt}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 ) : (
                   <input type="text" value={sheetValue} onChange={e => setSheetValue(e.target.value)} placeholder={sheet.label}
