@@ -27,7 +27,7 @@ export default function Shortlist() {
     const appsWithProfiles = await Promise.all((apps || []).map(async app => {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name, job_title, profession, seniority, current_employer, qualification, skills, location_name, bio, cv_path, cv_filename, avatar_url, open_to_work')
+        .select('full_name, job_title, profession, seniority, current_employer, qualification, skills, location_name, bio, cv_path, cv_filename, avatar_url, open_to_work, years_experience, languages')
         .eq('id', app.candidate_id)
         .maybeSingle()
       return { ...app, profiles: profile }
@@ -168,6 +168,22 @@ export default function Shortlist() {
                       </div>
                     </div>
                   )}
+
+                  {/* Experience & Languages */}
+                  <div style={{ display:'flex', gap:8, marginBottom:10 }}>
+                    {p?.years_experience && (
+                      <div style={{ flex:1, background:'var(--bg3)', borderRadius:8, padding:'8px 10px' }}>
+                        <div style={{ fontSize:9, color:'var(--t3)', marginBottom:3 }}>EXPERIENCE</div>
+                        <div style={{ fontSize:12, color:'#fff' }}>{p.years_experience}</div>
+                      </div>
+                    )}
+                    {p?.languages && (
+                      <div style={{ flex:2, background:'var(--bg3)', borderRadius:8, padding:'8px 10px' }}>
+                        <div style={{ fontSize:9, color:'var(--t3)', marginBottom:3 }}>LANGUAGES</div>
+                        <div style={{ fontSize:12, color:'#fff' }}>{p.languages}</div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* CV */}
                   {p?.cv_path && (
