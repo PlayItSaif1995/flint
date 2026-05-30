@@ -17,6 +17,7 @@ export default function CandSettings() {
   const [sheet, setSheet] = useState(null)
   const [currentPassword, setCurrentPassword] = useState('')
   const [sheetError, setSheetError] = useState('')
+  const [confirmValue, setConfirmValue] = useState('')
 
   async function handleCVUpload(e) {
     const file = e.target.files[0]
@@ -78,6 +79,24 @@ export default function CandSettings() {
     const current = profile?.[field] || ''
     setSheet({ field, label, type, options })
     setSheetValue(current)
+    setSheetError('')
+    if (field === 'location_name') detectLocation()
+  }
+
+  async function detectLocation() {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const { latitude, longitude } = pos.coords
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`)
+        const d = await r.json()
+        const a = d.address
+        const city = a.city || a.town || a.village || a.county || ''
+        const country = a.country || ''
+        setSheetValue(city ? `${city}, ${country}` : country)
+        await supabase.from('profiles').update({ lat: latitude, lon: longitude }).eq('id', user.id)
+      } catch {}
+    }, () => {}) // silently fail — user can still type manually
   }
 
   async function saveSheet() {
@@ -286,59 +305,103 @@ export default function CandSettings() {
 
       {/* Quick edit bottom sheet */}
       {sheet && (
-        <div className="modal-overlay" onClick={() => { setSheet(null); setCurrentPassword(''); setSheetError('') }}>
+        <div className="modal-overlay" onClick={() => { setSheet(null); setCurrentPassword(''); setSheetError(''); setConfirmValue('') }}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="modal-title">{sheet.label}</div>
 
-            {/* Sensitive fields require current password first */}
-            {(sheet.field === 'password' || sheet.field === 'email') && (
-              <div style={{ marginBottom:10 }}>
-                <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', marginBottom:5 }}>CURRENT PASSWORD</div>
-                <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)}
-                  placeholder="Enter your current password to confirm"
-                  style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'13px 14px', color:'#fff', fontSize:14, fontFamily:'inherit', outline:'none', marginBottom:10 }}/>
-                <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', marginBottom:5 }}>{sheet.field === 'password' ? 'NEW PASSWORD' : 'NEW EMAIL'}</div>
+            {/* EMAIL CHANGE */}
+            {sheet.field === 'email' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:10 }}>
+                <div>
+                  <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', marginBottom:5 }}>CURRENT PASSWORD</div>
+                  <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} placeholder="Your current password"
+                    style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'12px 14px', color:'#fff', fontSize:13, fontFamily:'inherit', outline:'none' }}/>
+                </div>
+                <div>
+                  <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', marginBottom:5 }}>NEW EMAIL ADDRESS</div>
+                  <input type="email" value={sheetValue} onChange={e => setSheetValue(e.target.value)} placeholder="New email address"
+                    style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'12px 14px', color:'#fff', fontSize:13, fontFamily:'inherit', outline:'none' }}/>
+                </div>
+                <div>
+                  <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', marginBottom:5 }}>CONFIRM NEW EMAIL</div>
+                  <input type="email" value={confirmValue} onChange={e => setConfirmValue(e.target.value)} placeholder="Re-enter new email address"
+                    style={{ width:'100%', background:'var(--bg3)', border:`0.5px solid ${confirmValue && confirmValue !== sheetValue ? 'var(--red)' : 'var(--border)'}`, borderRadius:10, padding:'12px 14px', color:'#fff', fontSize:13, fontFamily:'inherit', outline:'none' }}/>
+                  {confirmValue && confirmValue !== sheetValue && <p style={{ fontSize:11, color:'var(--red)', marginTop:4 }}>Emails don't match</p>}
+                </div>
               </div>
             )}
 
-            <div style={{ marginBottom:10 }}>
-              {sheet.type === 'select' ? (
-                <select value={sheetValue} onChange={e => setSheetValue(e.target.value)}
-                  style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'13px 14px', color:'#fff', fontSize:14, fontFamily:'inherit', outline:'none', cursor:'pointer' }}>
-                  {sheet.options.map(o => <option key={o}>{o}</option>)}
-                </select>
-              ) : sheet.field === 'password' ? (
-                <input type="password" value={sheetValue} onChange={e => setSheetValue(e.target.value)}
-                  placeholder="New password (min 8 characters)"
-                  style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'13px 14px', color:'#fff', fontSize:14, fontFamily:'inherit', outline:'none' }}/>
-              ) : (
-                <input type={sheet.field === 'email' ? 'email' : 'text'} value={sheetValue} onChange={e => setSheetValue(e.target.value)}
-                  placeholder={sheet.label}
-                  style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'13px 14px', color:'#fff', fontSize:14, fontFamily:'inherit', outline:'none' }}/>
-              )}
-            </div>
+            {/* PASSWORD CHANGE */}
+            {sheet.field === 'password' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:10 }}>
+                <div>
+                  <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', marginBottom:5 }}>CURRENT PASSWORD</div>
+                  <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} placeholder="Your current password"
+                    style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'12px 14px', color:'#fff', fontSize:13, fontFamily:'inherit', outline:'none' }}/>
+                </div>
+                <div>
+                  <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', marginBottom:5 }}>NEW PASSWORD</div>
+                  <input type="password" value={sheetValue} onChange={e => setSheetValue(e.target.value)} placeholder="New password (min 8 characters)"
+                    style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'12px 14px', color:'#fff', fontSize:13, fontFamily:'inherit', outline:'none' }}/>
+                  {sheetValue && sheetValue.length < 8 && <p style={{ fontSize:11, color:'var(--red)', marginTop:4 }}>Must be at least 8 characters</p>}
+                </div>
+                <div>
+                  <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', marginBottom:5 }}>CONFIRM NEW PASSWORD</div>
+                  <input type="password" value={confirmValue} onChange={e => setConfirmValue(e.target.value)} placeholder="Re-enter new password"
+                    style={{ width:'100%', background:'var(--bg3)', border:`0.5px solid ${confirmValue && confirmValue !== sheetValue ? 'var(--red)' : 'var(--border)'}`, borderRadius:10, padding:'12px 14px', color:'#fff', fontSize:13, fontFamily:'inherit', outline:'none' }}/>
+                  {confirmValue && confirmValue !== sheetValue && <p style={{ fontSize:11, color:'var(--red)', marginTop:4 }}>Passwords don't match</p>}
+                </div>
+              </div>
+            )}
+
+            {/* ALL OTHER FIELDS */}
+            {sheet.field !== 'email' && sheet.field !== 'password' && (
+              <div style={{ marginBottom:10 }}>
+                {sheet.type === 'select' ? (
+                  <select value={sheetValue} onChange={e => setSheetValue(e.target.value)}
+                    style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'13px 14px', color:'#fff', fontSize:14, fontFamily:'inherit', outline:'none', cursor:'pointer' }}>
+                    {sheet.options.map(o => <option key={o}>{o}</option>)}
+                  </select>
+                ) : sheet.field === 'location_name' ? (
+                  <div>
+                    <input type="text" value={sheetValue} onChange={e => setSheetValue(e.target.value)} placeholder="e.g. London, UK"
+                      style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'13px 14px', color:'#fff', fontSize:14, fontFamily:'inherit', outline:'none', marginBottom:8 }}/>
+                    <button onClick={detectLocation} style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border2)', borderRadius:10, padding:'11px 14px', color:'var(--spark)', fontSize:13, fontFamily:'inherit', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
+                      <i className="ti ti-map-pin" style={{ fontSize:15 }}/> Use my current location
+                    </button>
+                  </div>
+                ) : (
+                  <input type="text" value={sheetValue} onChange={e => setSheetValue(e.target.value)} placeholder={sheet.label}
+                    style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'13px 14px', color:'#fff', fontSize:14, fontFamily:'inherit', outline:'none' }}/>
+                )}
+              </div>
+            )}
 
             {sheetError && <p style={{ fontSize:12, color:'var(--red)', marginBottom:10 }}>{sheetError}</p>}
 
             <div style={{ display:'flex', gap:8 }}>
-              <button className="btn-secondary" style={{ flex:1 }} onClick={() => { setSheet(null); setCurrentPassword(''); setSheetError('') }}>Cancel</button>
+              <button className="btn-secondary" style={{ flex:1 }} onClick={() => { setSheet(null); setCurrentPassword(''); setSheetError(''); setConfirmValue('') }}>Cancel</button>
               <button className="btn-primary" style={{ flex:2, marginBottom:0 }} onClick={async () => {
                 setSheetError('')
+
                 if (sheet.field === 'password') {
-                  if (!currentPassword) { setSheetError('Enter your current password first'); return }
+                  if (!currentPassword) { setSheetError('Enter your current password'); return }
                   if (sheetValue.length < 8) { setSheetError('New password must be at least 8 characters'); return }
+                  if (sheetValue !== confirmValue) { setSheetError("Passwords don't match"); return }
                   setSaving(true)
                   const { error: authErr } = await supabase.auth.signInWithPassword({ email: profile?.email || user?.email, password: currentPassword })
                   if (authErr) { setSheetError('Current password is incorrect'); setSaving(false); return }
                   const { error } = await supabase.auth.updateUser({ password: sheetValue })
                   setSaving(false)
                   if (error) setSheetError(error.message)
-                  else { setSheet(null); setCurrentPassword('') }
+                  else { setSheet(null); setCurrentPassword(''); setConfirmValue('') }
                   return
                 }
+
                 if (sheet.field === 'email') {
-                  if (!currentPassword) { setSheetError('Enter your current password first'); return }
+                  if (!currentPassword) { setSheetError('Enter your current password'); return }
                   if (!sheetValue.includes('@')) { setSheetError('Enter a valid email address'); return }
+                  if (sheetValue !== confirmValue) { setSheetError("Email addresses don't match"); return }
                   setSaving(true)
                   const { error: authErr } = await supabase.auth.signInWithPassword({ email: profile?.email || user?.email, password: currentPassword })
                   if (authErr) { setSheetError('Current password is incorrect'); setSaving(false); return }
@@ -347,17 +410,18 @@ export default function CandSettings() {
                   if (error) setSheetError(error.message)
                   else {
                     await supabase.from('profiles').update({ email: sheetValue }).eq('id', user.id)
-                    setSheet(null); setCurrentPassword('')
+                    setSheet(null); setCurrentPassword(''); setConfirmValue('')
                   }
                   return
                 }
-                // Non-sensitive — just save directly
+
+                // Non-sensitive fields
                 setSaving(true)
                 await supabase.from('profiles').update({ [sheet.field]: sheetValue }).eq('id', user.id)
                 await refreshProfile()
                 setSaving(false)
                 setSheet(null)
-              }} disabled={saving}>
+              }} disabled={saving || (sheet.field !== 'password' && sheet.field !== 'email' ? false : !currentPassword || !sheetValue || sheetValue !== confirmValue)}>
                 {saving ? <i className="ti ti-loader spin"/> : <i className="ti ti-check"/>} Save
               </button>
             </div>
