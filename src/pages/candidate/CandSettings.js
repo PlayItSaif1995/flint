@@ -3,28 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
 
-const COUNTRY_CITIES = {
-  'United Kingdom': ['London','Manchester','Birmingham','Leeds','Edinburgh','Glasgow','Bristol','Liverpool','Sheffield','Newcastle','Cardiff','Belfast','Oxford','Cambridge','Nottingham','Leicester','Coventry','Bradford','Stoke-on-Trent','Reading'],
-  'United States': ['New York','Los Angeles','Chicago','Houston','Phoenix','Philadelphia','San Antonio','San Diego','Dallas','San Francisco','Seattle','Denver','Boston','Atlanta','Miami','Portland','Las Vegas','Minneapolis','Detroit','Baltimore'],
-  'Canada': ['Toronto','Vancouver','Montreal','Calgary','Ottawa','Edmonton','Quebec City','Winnipeg','Halifax','Victoria'],
-  'Australia': ['Sydney','Melbourne','Brisbane','Perth','Adelaide','Gold Coast','Newcastle','Canberra','Hobart','Darwin'],
-  'United Arab Emirates': ['Dubai','Abu Dhabi','Sharjah','Ajman','Ras Al Khaimah','Fujairah'],
-  'Ireland': ['Dublin','Cork','Galway','Limerick','Waterford','Kilkenny'],
-  'Germany': ['Berlin','Munich','Hamburg','Frankfurt','Cologne','Stuttgart','Düsseldorf','Leipzig','Dortmund','Essen'],
-  'France': ['Paris','Lyon','Marseille','Toulouse','Nice','Nantes','Strasbourg','Montpellier','Bordeaux','Lille'],
-  'Netherlands': ['Amsterdam','Rotterdam','The Hague','Utrecht','Eindhoven','Groningen','Tilburg'],
-  'Spain': ['Madrid','Barcelona','Valencia','Seville','Zaragoza','Málaga','Bilbao'],
-  'Italy': ['Rome','Milan','Naples','Turin','Florence','Bologna','Venice'],
-  'Singapore': ['Singapore'],
-  'Qatar': ['Doha','Al Wakrah','Al Khor','Lusail'],
-  'Saudi Arabia': ['Riyadh','Jeddah','Mecca','Medina','Dammam','Khobar'],
-  'South Africa': ['Johannesburg','Cape Town','Durban','Pretoria','Port Elizabeth'],
-  'India': ['Mumbai','Delhi','Bangalore','Hyderabad','Chennai','Kolkata','Pune','Ahmedabad'],
-  'Pakistan': ['Karachi','Lahore','Islamabad','Rawalpindi','Faisalabad','Peshawar'],
-  'New Zealand': ['Auckland','Wellington','Christchurch','Hamilton','Dunedin'],
-  'Other': ['Other'],
-}
-
 export default function CandSettings() {
   const nav = useNavigate()
   const { profile, signOut, user, refreshProfile } = useAuth()
@@ -42,6 +20,9 @@ export default function CandSettings() {
   const [confirmValue, setConfirmValue] = useState('')
   const [locationCountry, setLocationCountry] = useState('')
   const [locationCity, setLocationCity] = useState('')
+  const [countries, setCountries] = useState([])
+  const [cities, setCities] = useState([])
+  const [loadingCities, setLoadingCities] = useState(false)
 
   async function handleCVUpload(e) {
     const file = e.target.files[0]
@@ -109,6 +90,11 @@ export default function CandSettings() {
     if (profile?.notification_prefs) {
       try { setNotifs({ ...notifs, ...JSON.parse(profile.notification_prefs) }) } catch {}
     }
+    // Load all countries
+    fetch('https://countriesnow.space/api/v0.1/countries/positions')
+      .then(r => r.json())
+      .then(d => setCountries((d.data || []).map(c => c.name).sort()))
+      .catch(() => {})
   }, [profile])
 
   function openSheet(field, label, type, options = null) {
@@ -117,6 +103,24 @@ export default function CandSettings() {
     setSheetValue(current)
     setSheetError('')
     if (field === 'location_name') detectLocation()
+  }
+
+  async function handleCountryChange(country) {
+    setLocationCountry(country)
+    setLocationCity('')
+    setCities([])
+    if (!country) return
+    setLoadingCities(true)
+    try {
+      const r = await fetch('https://countriesnow.space/api/v0.1/countries/cities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ country })
+      })
+      const d = await r.json()
+      setCities((d.data || []).sort())
+    } catch {}
+    setLoadingCities(false)
   }
 
   async function detectLocation() {
@@ -132,7 +136,7 @@ export default function CandSettings() {
         setSheetValue(city ? `${city}, ${country}` : country)
         await supabase.from('profiles').update({ lat: latitude, lon: longitude }).eq('id', user.id)
       } catch {}
-    }, () => {}) // silently fail — user can still type manually
+    }, () => {})
   }
 
   async function saveSheet() {
@@ -400,27 +404,27 @@ export default function CandSettings() {
                   </select>
                 ) : sheet.field === 'location_name' ? (
                   <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                    <div style={{ background: sheetValue ? 'var(--gd)' : 'var(--bg3)', border:`0.5px solid ${sheetValue ? 'var(--gb)' : 'var(--border)'}`, borderRadius:10, padding:'13px 14px', display:'flex', alignItems:'center', gap:10 }}>
-                      <i className={`ti ${sheetValue ? 'ti-map-pin-check' : 'ti-map-pin'}`} style={{ fontSize:18, color: sheetValue ? 'var(--green)' : 'var(--t3)', flexShrink:0 }}/>
+                    <div style={{ background: sheetValue ? 'var(--gd)' : 'var(--bg3)', border:`0.5px solid ${sheetValue ? 'var(--gb)' : 'var(--border)'}`, borderRadius:10, padding:'12px 14px', display:'flex', alignItems:'center', gap:10 }}>
+                      <i className={`ti ${sheetValue ? 'ti-map-pin-check' : 'ti-map-pin'}`} style={{ fontSize:16, color: sheetValue ? 'var(--green)' : 'var(--t3)', flexShrink:0 }}/>
                       <div style={{ flex:1 }}>
-                        <div style={{ fontSize:13, color: sheetValue ? '#fff' : 'var(--t3)', fontWeight: sheetValue ? 500 : 400 }}>{sheetValue || 'No location set'}</div>
-                        {sheetValue && <div style={{ fontSize:10, color:'var(--green)' }}>Location set</div>}
+                        <div style={{ fontSize:13, color: sheetValue ? '#fff' : 'var(--t3)' }}>{sheetValue || 'No location set'}</div>
                       </div>
                     </div>
-                    <button onClick={detectLocation} style={{ width:'100%', background:'var(--spark)', border:'none', borderRadius:10, padding:'12px 14px', color:'#000', fontSize:13, fontWeight:600, fontFamily:'inherit', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
-                      <i className="ti ti-map-pin" style={{ fontSize:15 }}/> Use my current location
+                    <button onClick={detectLocation} style={{ width:'100%', background:'var(--spark)', border:'none', borderRadius:10, padding:'11px 14px', color:'#000', fontSize:13, fontWeight:600, fontFamily:'inherit', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
+                      <i className="ti ti-map-pin"/> Use my current location
                     </button>
                     <div style={{ fontSize:10, color:'var(--t3)', textAlign:'center' }}>— or select manually —</div>
-                    <select value={locationCountry} onChange={e => { setLocationCountry(e.target.value); setLocationCity('') }}
-                      style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'12px 14px', color: locationCountry ? '#fff' : 'var(--t3)', fontSize:13, fontFamily:'inherit', outline:'none', cursor:'pointer' }}>
-                      <option value="">Select country</option>
-                      {Object.keys(COUNTRY_CITIES).map(c => <option key={c}>{c}</option>)}
+                    <select value={locationCountry} onChange={e => handleCountryChange(e.target.value)}
+                      style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'11px 14px', color: locationCountry ? '#fff' : 'var(--t3)', fontSize:13, fontFamily:'inherit', outline:'none', cursor:'pointer' }}>
+                      <option value="">Select country...</option>
+                      {countries.map(c => <option key={c}>{c}</option>)}
                     </select>
                     {locationCountry && (
                       <select value={locationCity} onChange={e => { setLocationCity(e.target.value); setSheetValue(`${e.target.value}, ${locationCountry}`) }}
-                        style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'12px 14px', color: locationCity ? '#fff' : 'var(--t3)', fontSize:13, fontFamily:'inherit', outline:'none', cursor:'pointer' }}>
-                        <option value="">Select city</option>
-                        {COUNTRY_CITIES[locationCountry].map(c => <option key={c}>{c}</option>)}
+                        style={{ width:'100%', background:'var(--bg3)', border:'0.5px solid var(--border)', borderRadius:10, padding:'11px 14px', color: locationCity ? '#fff' : 'var(--t3)', fontSize:13, fontFamily:'inherit', outline:'none', cursor:'pointer' }}
+                        disabled={loadingCities}>
+                        <option value="">{loadingCities ? 'Loading cities...' : 'Select city...'}</option>
+                        {cities.map(c => <option key={c}>{c}</option>)}
                       </select>
                     )}
                   </div>
