@@ -5,11 +5,18 @@ import { useAuth } from '../../hooks/useAuth'
 import CandNav from '../../components/CandNav'
 
 function haversine(lat1, lon1, lat2, lon2) {
-  const R = 3959
+  const R = 3959 // miles
   const dLat = (lat2-lat1)*Math.PI/180
   const dLon = (lon2-lon1)*Math.PI/180
   const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2
   return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)))
+}
+
+function getRadiusMiles(radiusStr) {
+  if (!radiusStr) return 9999
+  if (radiusStr.includes('Anywhere')) return 9999
+  const match = radiusStr.match(/(\d+)/)
+  return match ? parseInt(match[1]) : 9999
 }
 
 function fitScore(profile, job) {
@@ -37,10 +44,26 @@ export default function Discover() {
   useEffect(() => { loadJobs(); loadUnread() }, [])
 
   async function loadJobs() {
-    const { data } = await supabase.from('jobs').select('*, companies(name, location)').eq('status', 'active').limit(20)
+    const { data } = await supabase.from('jobs').select('*, companies(name, location)').eq('status', 'active').limit(100)
     const passed = JSON.parse(localStorage.getItem(`passed_${user.id}`) || '[]')
     const applied = JSON.parse(localStorage.getItem(`applied_${user.id}`) || '[]')
-    const filtered = (data || []).filter(j => !passed.includes(j.id) && !applied.includes(j.id))
+    
+    const radiusMiles = getRadiusMiles(profile?.search_radius)
+    const userLat = profile?.lat
+    const userLon = profile?.lon
+
+    const filtered = (data || []).filter(j => {
+      // Skip already passed or applied
+      if (passed.includes(j.id) || applied.includes(j.id)) return false
+      // If user has no location or job has no location or radius is anywhere — show all
+      if (!userLat || !userLon || !j.lat || !j.lon || radiusMiles >= 9999) return true
+      // Filter by distance
+      const dist = haversine(userLat, userLon, j.lat, j.lon)
+      return dist <= radiusMiles
+    })
+
+    // Sort by fit score
+    filtered.sort((a, b) => fitScore(profile, b) - fitScore(profile, a))
     setJobs(filtered)
     setLoading(false)
   }

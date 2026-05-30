@@ -236,10 +236,26 @@ export default function CandSettings() {
 
         {/* Account */}
         <div style={{ padding:'3px 0' }}>
-          <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', padding:'8px 15px 3px' }}>ACCOUNT</div>
+          <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', padding:'8px 15px 3px' }}>PROFILE</div>
           <div className="s-row" onClick={() => nav('/settings/edit-profile', { state:{ from:'settings' } })}>
-            <div className="s-icon sp"><i className="ti ti-user"/></div><div className="s-label">Edit full profile</div><i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
+            <div className="s-icon sp"><i className="ti ti-user"/></div><div className="s-label">Full name</div>
+            <span className="s-value">{profile?.full_name || 'Not set'}</span>
+            <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
           </div>
+          <div className="s-row" onClick={() => nav('/settings/edit-profile', { state:{ from:'settings' } })}>
+            <div className="s-icon"><i className="ti ti-briefcase"/></div><div className="s-label">Job title & experience</div>
+            <span className="s-value">{profile?.job_title || 'Not set'}</span>
+            <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
+          </div>
+          <div className="s-row" onClick={() => nav('/settings/edit-profile', { state:{ from:'settings' } })}>
+            <div className="s-icon"><i className="ti ti-file-text"/></div><div className="s-label">Bio & skills</div>
+            <i className="ti ti-chevron-right" style={{ fontSize:13, color:'var(--t3)' }}/>
+          </div>
+        </div>
+
+        {/* Account */}
+        <div style={{ padding:'3px 0' }}>
+          <div style={{ fontSize:10, color:'var(--t3)', letterSpacing:'.5px', padding:'8px 15px 3px' }}>ACCOUNT</div>
           <input type="file" id="cv-settings-upload" accept=".pdf,.doc,.docx" style={{ display:'none' }} onChange={handleCVUpload}/>
           {cvPath || profile?.cv_path ? (
             <div style={{ display:'flex', alignItems:'center', gap:0, borderBottom:'0.5px solid var(--border)' }}>
